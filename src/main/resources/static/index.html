@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>사용자 위치 가져오기</title>
+</head>
+<body>
+
+<h1>사용자 위치 정보</h1>
+<button id="getLocationBtn">내 위치 가져오기</button>
+
+<p id="status"></p>
+<p>위도: <span id="latitude"></span></p>
+<p>경도: <span id="longitude"></span></p>
+
+<script>
+    // '내 위치 가져오기' 버튼을 클릭했을 때의 이벤트 처리
+    document.getElementById('getLocationBtn').addEventListener('click', () => {
+        const status = document.getElementById('status');
+
+        // 1. 브라우저가 Geolocation API를 지원하는지 확인
+        if (!navigator.geolocation) {
+            status.textContent = 'Geolocation API를 지원하지 않는 브라우저입니다.';
+            return;
+        }
+
+        status.textContent = '위치를 찾는 중...';
+
+        // 2. Geolocation API를 사용하여 현재 위치를 가져옴
+        navigator.geolocation.getCurrentPosition(onSuccess, onError);
+    });
+
+    // 위치 정보 가져오기 성공 시 실행될 콜백 함수
+    function onSuccess(position) {
+        const latitude = position.coords.latitude;
+        const longitude = position.coords.longitude;
+
+        document.getElementById('status').textContent = '위치를 성공적으로 찾았습니다!';
+        document.getElementById('latitude').textContent = latitude;
+        document.getElementById('longitude').textContent = longitude;
+
+        // 3. 백엔드 API로 위치 데이터 전송
+        sendLocationToServer(latitude, longitude);
+    }
+
+    // 위치 정보 가져오기 실패 시 실행될 콜백 함수
+    function onError(error) {
+        let message = '';
+        switch (error.code) {
+            case error.PERMISSION_DENIED:
+                message = '사용자가 위치 정보 접근을 거부했습니다.';
+                break;
+            case error.POSITION_UNAVAILABLE:
+                message = '위치 정보를 사용할 수 없습니다.';
+                break;
+            case error.TIMEOUT:
+                message = '위치 정보를 가져오는 데 시간이 초과되었습니다.';
+                break;
+            default:
+                message = '알 수 없는 오류가 발생했습니다.';
+                break;
+        }
+        document.getElementById('status').textContent = `오류: ${message}`;
+    }
+
+    // fetch API를 사용하여 백엔드로 데이터를 전송하는 함수
+    async function sendLocationToServer(latitude, longitude) {
+        const locationData = {
+            latitude: latitude,
+            longitude: longitude
+        };
+
+        try {
+            const response = await fetch('/api/location', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(locationData)
+            });
+
+            if (response.ok) {
+                const result = await response.text();
+                console.log('서버 응답:', result);
+                alert('서버에 위치를 성공적으로 전송했습니다.');
+            } else {
+                console.error('서버 전송 실패:', response.statusText);
+                alert('서버에 위치를 전송하는 데 실패했습니다.');
+            }
+        } catch (error) {
+            console.error('네트워크 오류:', error);
+            alert('네트워크 오류로 위치를 전송할 수 없습니다.');
+        }
+    }
+</script>
+
+</body>
+</html>
