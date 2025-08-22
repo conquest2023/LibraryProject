@@ -9,4 +9,11 @@ import project.library.controller.dto.book.BookDto;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class BookDetailDto {
     private BookDto book;
+
+    private BookDto doc;
+
+
+    private BookDto docs;
+
+
 }

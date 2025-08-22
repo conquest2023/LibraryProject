@@ -8,15 +8,17 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
+import project.library.controller.dto.book.BookDetailDto;
 import project.library.controller.dto.book.BookDto;
 import project.library.controller.dto.book.LibraryResponseDto;
-import project.library.controller.dto.book.search.BookDocDto;
-import project.library.controller.dto.book.search.BookSearchResponseDto;
-import project.library.controller.dto.book.search.DocWrapperDto;
+import project.library.controller.dto.book.search.BookSearchReseponseDto;
+import project.library.repository.collection.Library;
+import project.library.service.LibraryServiceImpl;
 
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 
 @Slf4j
@@ -24,6 +26,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class LibraryController {
 
+
+    private final LibraryServiceImpl libraryService;
     private final RestTemplate restTemplate;
 
     private static final String API_BASE_URL = "http://data4library.kr/api";
@@ -55,27 +59,28 @@ public class LibraryController {
         headers.setAccept(List.of(MediaType.ALL));
         HttpEntity<String> entity = new HttpEntity<>(headers);
 
-        ResponseEntity<BookSearchResponseDto> responseEntity =
-                restTemplate.exchange(uri, HttpMethod.GET, entity, BookSearchResponseDto.class);
+        ResponseEntity<BookSearchReseponseDto> responseEntity =
+                restTemplate.exchange(uri, HttpMethod.GET, entity, BookSearchReseponseDto.class);
 
 // 2. DTO 객체로 깔끔하게 데이터 받기
-        BookSearchResponseDto searchResponse = responseEntity.getBody();
+        BookSearchReseponseDto searchResponse = responseEntity.getBody();
 
 // 3. 안전하고 명확하게 데이터 접근
         if (searchResponse != null && searchResponse.getResponse() != null) {
-            List<DocWrapperDto> docWrappers = searchResponse.getResponse().getDocs();
+            List<BookDetailDto> docWrappers = searchResponse.getResponse().getDocs();
 
             // Java Stream을 사용해 더 간결하게 책 목록만 추출
-            List<BookDocDto> books = docWrappers.stream()
-                    .map(DocWrapperDto::getDoc)
+            List<BookDto> books = docWrappers.stream()
+                    .map(BookDetailDto::getDoc)
                     .toList();
 
-            for (BookDocDto book : books) {
+            for (BookDto book : books) {
                 log.info("책 제목: {}", book.getBookname());
                 log.info("저자: {}", book.getAuthors());
+                log.info("");
             }
         }
-        return  responseEntity;
+        return ResponseEntity.ok(Map.of("ok",searchResponse));
     }
 
     @GetMapping("/detail/book")
@@ -93,11 +98,7 @@ public class LibraryController {
                 .toUri();
 
         HttpHeaders headers = new HttpHeaders();
-        // 이 API는 Accept 헤더를 보내면 406 오류를 발생시키므로, 헤더를 비워두거나
-        // 서버가 확실히 받아들일 만한 다른 타입으로 설정할 수 있습니다.
-        // 여기서는 가장 일반적인 '어떤 것이든 받겠다'는 의미로 설정합니다.
         headers.setAccept(List.of(MediaType.ALL));
-
         // 3. 헤더를 담은 HttpEntity 객체를 생성합니다.
         HttpEntity<String> entity = new HttpEntity<>(headers);
         ResponseEntity<LibraryResponseDto> responseEntity =
@@ -112,11 +113,6 @@ public class LibraryController {
             // 첫 번째 책 정보를 가져옴
             BookDto book = libraryResponse.getResponse().getDetail().get(0).getBook();
 
-            String bookTitle = book.getBookname();
-            String author = book.getAuthors();
-
-
-            // 클라이언트에게는 책 정보 객체(book)만 반환하거나, 가공해서 반환
             return ResponseEntity.ok(book);
         }
 
@@ -134,14 +130,37 @@ public class LibraryController {
                 .pathSegment("recommandList")
                 .queryParam("authKey", AUTH_KEY)
                 .queryParam("type","reader")
-                .queryParam("isbn", isbn)
+                .queryParam("isbn13", isbn)
+                .queryParam("format", "json")
                 .encode()
                 .build()
                 .toUri();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setAccept(List.of(MediaType.ALL));
+        HttpEntity<String> entity = new HttpEntity<>(headers);
 
-        ResponseEntity<String> responseEntity = restTemplate.getForEntity(uri, String.class);
+        ResponseEntity<BookSearchReseponseDto> responseEntity =
+                restTemplate.exchange(uri, HttpMethod.GET, entity, BookSearchReseponseDto.class);
 
-        return responseEntity;
+// 2. DTO 객체로 깔끔하게 데이터 받기
+        BookSearchReseponseDto searchResponse = responseEntity.getBody();
+
+// 3. 안전하고 명확하게 데이터 접근
+        if (searchResponse != null && searchResponse.getResponse() != null) {
+            List<BookDetailDto> docWrappers = searchResponse.getResponse().getDocs();
+
+            // Java Stream을 사용해 더 간결하게 책 목록만 추출
+            List<BookDto> books = docWrappers.stream()
+                    .map(BookDetailDto::getBook)
+                    .toList();
+
+            for (BookDto book : books) {
+                log.info("책 제목: {}", book.getBookname());
+                log.info("저자: {}", book.getAuthors());
+                log.info("");
+            }
+        }
+        return ResponseEntity.ok(Map.of("ok",searchResponse));
 
     }
 
@@ -150,7 +169,7 @@ public class LibraryController {
     @GetMapping("/search/library")
     @ResponseBody
     public ResponseEntity<?> getLibrary(@RequestParam String isbn,
-                                        @RequestParam int region){
+                                        @RequestParam String region){
 
         URI uri = UriComponentsBuilder
                 .fromUriString(API_BASE_URL)
@@ -190,4 +209,14 @@ public class LibraryController {
 
         return responseEntity;
     }
+
+
+    @GetMapping("/test")
+    public ResponseEntity<?> getAllLibrary(){
+
+        libraryService.putGeotRedisLibrary();
+
+        return ResponseEntity.of(Optional.of(Map.of("library", "OK")));
+    }
 }
+

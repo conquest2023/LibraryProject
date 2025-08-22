@@ -6,6 +6,6 @@ import lombok.Getter;
 
 @Getter
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class BookSearchResponseDto {
+public class BookSearchReseponseDto {
     private SearchApiResponseDto response;
 }
