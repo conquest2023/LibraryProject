@@ -8,4 +8,7 @@ import lombok.ToString;
 public class LocationDto {
     private double latitude;  // 위도
     private double longitude; // 경도
+
+    private String  isbn;
+
 }

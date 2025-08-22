@@ -214,7 +214,7 @@ public class LibraryController {
     @GetMapping("/test")
     public ResponseEntity<?> getAllLibrary(){
 
-        libraryService.putGeotRedisLibrary();
+//        libraryService.putRedisLibrary();
 
         return ResponseEntity.of(Optional.of(Map.of("library", "OK")));
     }
