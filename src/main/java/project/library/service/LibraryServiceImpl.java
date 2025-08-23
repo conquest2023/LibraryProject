@@ -8,26 +8,20 @@ import org.springframework.data.geo.Distance;
 import org.springframework.data.geo.GeoResults;
 import org.springframework.data.geo.Point;
 import org.springframework.data.redis.connection.RedisGeoCommands;
-import org.springframework.data.redis.core.GeoOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.domain.geo.GeoLocation;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 import project.library.controller.dto.LocationDto;
-import project.library.controller.dto.book.BookDetailDto;
-import project.library.controller.dto.book.BookDto;
+import project.library.controller.dto.book.NearestLibrary;
 import project.library.controller.dto.book.check.BookCheck;
 import project.library.controller.dto.book.search.BookSearchReseponseDto;
 import project.library.repository.LibraryRepository;
 import project.library.repository.collection.Library;
-
 import java.net.URI;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -42,6 +36,9 @@ public class LibraryServiceImpl implements  LibraryService{
     private final RestTemplate restTemplate;
 
     private final LibraryRepository repository;
+
+
+    private  static final  String  REDIS_GEOKEY="libraries:locations";
 
     private static final String API_BASE_URL = "http://data4library.kr/api";
 
@@ -67,10 +64,11 @@ public class LibraryServiceImpl implements  LibraryService{
                 .map(result -> result.getContent().getName())
                 .collect(Collectors.toList());
 
+
         log.info("반경 내 도서관 {}개 발견.", libraryCodes.size());
 
         // CompletableFuture를 이용해 각 API 호출을 비동기적으로 실행
-        List<CompletableFuture<BookSearchReseponseDto>> futures = libraryCodes.stream()
+        List<CompletableFuture<AbstractMap.SimpleEntry<String, BookSearchReseponseDto>>>  futures = libraryCodes.stream()
                 .map(libCode -> CompletableFuture.supplyAsync(() -> {
                     try {
                         // RestTemplate을 사용한 API 호출 로직
@@ -92,7 +90,7 @@ public class LibraryServiceImpl implements  LibraryService{
                         ResponseEntity<BookSearchReseponseDto> responseEntity =
                                 restTemplate.exchange(uri, HttpMethod.GET, entity, BookSearchReseponseDto.class);
 
-                        return responseEntity.getBody();
+                        return new AbstractMap.SimpleEntry<>(libCode, responseEntity.getBody());
 
                     } catch (Exception e) {
                         log.error("API 호출 실패: {}", libCode, e);
@@ -101,32 +99,51 @@ public class LibraryServiceImpl implements  LibraryService{
                 }))
                 .collect(Collectors.toList());
 
+
         // 모든 비동기 작업이 완료될 때까지 기다림
         CompletableFuture<Void> allFutures = CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
 
+        Map<String,Point> libraries=new HashMap<>();
         try {
             allFutures.join(); // 모든 Future가 끝날 때까지 블록킹
-
             // 완료된 결과들을 모아 처리
-            List<BookSearchReseponseDto> responses = futures.stream()
-                    .map(CompletableFuture::join)
-                    .filter(response -> response != null && response.getResponse() != null)
-                    .collect(Collectors.toList());
-            // 최종 결과를 출력
-            for (BookSearchReseponseDto searchResponse : responses) {
-                BookCheck books = searchResponse.getResponse().getResult();
-                if (books.getHasBook().equals("Y") && books.getLoanAvailable().equals("Y")) {
-                    log.info("isbn:{}", locationDto.getIsbn());
-                    log.info("책 제목: {}", books.getHasBook());
-                    log.info("저자: {}", books.getLoanAvailable());
-                }
-            }
+            futures.stream()
+                    .map(CompletableFuture::join) // AbstractMap.SimpleEntry 객체 반환
+                    .filter(entry -> entry.getValue() != null && entry.getValue().getResponse() != null)
+                    .filter(entry -> entry.getValue().getResponse().getResult().getHasBook().equals("Y")
+                                    && entry.getValue().getResponse().getResult().getLoanAvailable().equals("Y"))
+                    .forEach(entry -> {
+                        String libCode = entry.getKey();
+                        List<Point> positions = redisTemplate.opsForGeo()
+                                .position(REDIS_GEOKEY, libCode);
+                        if (positions != null && !positions.isEmpty()) {
+                            Point point = positions.get(0);
+                            libraries.put(libCode, point);
+                        }
+                    });
         } catch (Exception e) {
             log.error("비동기 작업 중 오류 발생.", e);
         }
 
-        return null;
+        double userLat = locationDto.getLatitude();
+        double userLon = locationDto.getLongitude();
+
+        List<NearestLibrary> computed = new ArrayList<>();
+
+        for (Map.Entry<String, Point> entries : libraries.entrySet()) {
+            double distanceKm = haversine(userLat, userLon, entries.getValue().getY(), entries.getValue().getX());
+            computed.add(new NearestLibrary(entries.getKey(), entries.getValue().getY(), entries.getValue().getX(), distanceKm));
+        }
+        List<NearestLibrary> top3 = computed.stream()
+                .sorted(Comparator.comparingDouble(NearestLibrary::getDistanceKm))
+                .limit(3)
+                .toList();
+
+        log.info(top3.toString());
+
+        return  null;
     }
+
     public void putGeotRedisLibrary(){
         List<Library> all = repository.findAll();
 
@@ -161,6 +178,15 @@ public class LibraryServiceImpl implements  LibraryService{
         }
 
     }
-
+    static double haversine(double lat1, double lon1, double lat2, double lon2) {
+        double R = 6371.0; // km
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+                        Math.sin(dLon/2) * Math.sin(dLon/2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
+    }
 
 }

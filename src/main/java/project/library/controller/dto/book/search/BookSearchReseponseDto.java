@@ -7,5 +7,7 @@ import lombok.Getter;
 @Getter
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class BookSearchReseponseDto {
+    private String libCode;
+
     private SearchApiResponseDto response;
 }
