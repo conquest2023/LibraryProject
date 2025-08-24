@@ -3,6 +3,7 @@ package project.library.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.geo.Circle;
 import org.springframework.data.geo.Distance;
 import org.springframework.data.geo.GeoResults;
@@ -11,6 +12,7 @@ import org.springframework.data.redis.connection.RedisGeoCommands;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.domain.geo.GeoLocation;
 import org.springframework.http.*;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -23,12 +25,16 @@ import project.library.repository.collection.Library;
 import java.net.URI;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 
 @Service
 @Slf4j
 @RequiredArgsConstructor
 public class LibraryServiceImpl implements  LibraryService{
+
+    @Qualifier("externalApiTaskExecutor")
+    private final Executor externalApiTaskExecutor;
 
 
     private final RedisTemplate redisTemplate;
@@ -45,105 +51,117 @@ public class LibraryServiceImpl implements  LibraryService{
     private static final String AUTH_KEY = "1df2f040d9555558e014f541e2908356008ca9e3aa7a1d9c43ec2c15e54f5f4b";
 
 
-
-
-    public List<Library> findAll(){
-
-         return  repository.findAll();
-    }
-
-
     public List<Library> calculateDistance(LocationDto locationDto) {
 
         Point userLocation = new Point(locationDto.getLongitude(), locationDto.getLatitude());
-        Distance radius = new Distance(10, RedisGeoCommands.DistanceUnit.KILOMETERS);
+        Distance radius = new Distance(5, RedisGeoCommands.DistanceUnit.KILOMETERS);
         Circle area = new Circle(userLocation, radius);
+        GeoResults<RedisGeoCommands.GeoLocation<String>> results =
+                redisTemplate.opsForGeo().radius(
+                        "libraries:locations",
+                        area,
+                        RedisGeoCommands.GeoRadiusCommandArgs.newGeoRadiusArgs().includeCoordinates()
+                );
 
-        GeoResults<GeoLocation<String>> results = redisTemplate.opsForGeo().radius("libraries:locations", area);
-        List<String> libraryCodes = results.getContent().stream()
-                .map(result -> result.getContent().getName())
-                .collect(Collectors.toList());
 
 
+        Map<String, Point> coordByLib = results.getContent().stream()
+                .filter(r -> r.getContent().getPoint() != null)   // 좌표 없는 건 제외
+                .collect(Collectors.toMap(
+                        r -> r.getContent().getName(),
+                        r -> r.getContent().getPoint()
+                ));
+
+        List<String> libraryCodes = new ArrayList<>(coordByLib.keySet());
         log.info("반경 내 도서관 {}개 발견.", libraryCodes.size());
 
-        // CompletableFuture를 이용해 각 API 호출을 비동기적으로 실행
-        List<CompletableFuture<AbstractMap.SimpleEntry<String, BookSearchReseponseDto>>>  futures = libraryCodes.stream()
-                .map(libCode -> CompletableFuture.supplyAsync(() -> {
-                    try {
-                        // RestTemplate을 사용한 API 호출 로직
-                        URI uri = UriComponentsBuilder
-                                .fromUriString(API_BASE_URL)
-                                .pathSegment("bookExist")
-                                .queryParam("authKey", AUTH_KEY)
-                                .queryParam("libCode", libCode)
-                                .queryParam("isbn13", locationDto.getIsbn())
-                                .queryParam("format", "json")
-                                .encode()
-                                .build()
-                                .toUri();
 
-                        HttpHeaders headers = new HttpHeaders();
-                        headers.setAccept(List.of(MediaType.ALL));
-                        HttpEntity<String> entity = new HttpEntity<>(headers);
+        // 2) 외부 API 병렬 호출 결과 수집
+        List<AbstractMap.SimpleEntry<String, BookSearchReseponseDto>> apiResults =
+                getCompletableFutureList(locationDto, libraryCodes).join();
 
-                        ResponseEntity<BookSearchReseponseDto> responseEntity =
-                                restTemplate.exchange(uri, HttpMethod.GET, entity, BookSearchReseponseDto.class);
+        // 3) Y/Y 필터 + 거리 계산
+        double uLat = locationDto.getLatitude();
+        double uLon = locationDto.getLongitude();
 
-                        return new AbstractMap.SimpleEntry<>(libCode, responseEntity.getBody());
-
-                    } catch (Exception e) {
-                        log.error("API 호출 실패: {}", libCode, e);
-                        return null;
-                    }
-                }))
-                .collect(Collectors.toList());
-
-
-        // 모든 비동기 작업이 완료될 때까지 기다림
-        CompletableFuture<Void> allFutures = CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
-
-        Map<String,Point> libraries=new HashMap<>();
-        try {
-            allFutures.join(); // 모든 Future가 끝날 때까지 블록킹
-            // 완료된 결과들을 모아 처리
-            futures.stream()
-                    .map(CompletableFuture::join) // AbstractMap.SimpleEntry 객체 반환
-                    .filter(entry -> entry.getValue() != null && entry.getValue().getResponse() != null)
-                    .filter(entry -> entry.getValue().getResponse().getResult().getHasBook().equals("Y")
-                                    && entry.getValue().getResponse().getResult().getLoanAvailable().equals("Y"))
-                    .forEach(entry -> {
-                        String libCode = entry.getKey();
-                        List<Point> positions = redisTemplate.opsForGeo()
-                                .position(REDIS_GEOKEY, libCode);
-                        if (positions != null && !positions.isEmpty()) {
-                            Point point = positions.get(0);
-                            libraries.put(libCode, point);
-                        }
-                    });
-        } catch (Exception e) {
-            log.error("비동기 작업 중 오류 발생.", e);
-        }
-
-        double userLat = locationDto.getLatitude();
-        double userLon = locationDto.getLongitude();
-
-        List<NearestLibrary> computed = new ArrayList<>();
-
-        for (Map.Entry<String, Point> entries : libraries.entrySet()) {
-            double distanceKm = haversine(userLat, userLon, entries.getValue().getY(), entries.getValue().getX());
-            computed.add(new NearestLibrary(entries.getKey(), entries.getValue().getY(), entries.getValue().getX(), distanceKm));
-        }
-        List<NearestLibrary> top3 = computed.stream()
+        List<NearestLibrary> computed = apiResults.stream()
+                .filter(e -> e.getValue() != null && e.getValue().getResponse() != null)
+                .filter(e -> {
+                    var r = e.getValue().getResponse().getResult();
+                    return "Y".equals(r.getHasBook()) && "Y".equals(r.getLoanAvailable());
+                })
+                .map(e -> {
+                    String lib = e.getKey();
+                    Point p = coordByLib.get(lib);       // 재조회 없음!
+                    if (p == null) return null;
+                    double km = haversine(uLat, uLon, p.getY(), p.getX());
+                    return new NearestLibrary(lib, p.getY(), p.getX(), km);
+                })
+                .filter(Objects::nonNull)
                 .sorted(Comparator.comparingDouble(NearestLibrary::getDistanceKm))
                 .limit(3)
                 .toList();
 
-        log.info(top3.toString());
+        log.info("TOP3: {}", computed);
 
-        return  null;
+        // 4) 엔티티로 매핑해서 반환
+        return null;
     }
 
+
+
+    @Async("externalApiTaskExecutor")
+    public CompletableFuture<List<AbstractMap.SimpleEntry<String, BookSearchReseponseDto>>>
+    getCompletableFutureList(LocationDto locationDto, List<String> libraryCodes) {
+
+        List<CompletableFuture<AbstractMap.SimpleEntry<String, BookSearchReseponseDto>>> futures =
+                libraryCodes.stream()
+                        .map(libCode -> CompletableFuture
+                                .supplyAsync(() -> callBookExist(libCode, locationDto.getIsbn()), externalApiTaskExecutor)
+                                .completeOnTimeout(null, 3, java.util.concurrent.TimeUnit.SECONDS)
+                                .exceptionally(ex -> {
+                                    log.warn("API 실패: {}", libCode, ex);
+                                    return null;
+                                })
+                        ).toList();
+        return CompletableFuture
+                .allOf(futures.toArray(new CompletableFuture[0]))
+                .thenApply(v -> futures.stream()
+                        .map(CompletableFuture::join)
+                        .filter(Objects::nonNull)
+                        .toList());
+    }
+
+    private AbstractMap.SimpleEntry<String, BookSearchReseponseDto> callBookExist(String libCode, String isbn) {
+        URI uri = UriComponentsBuilder.fromUriString(API_BASE_URL)
+                .pathSegment("bookExist")
+                .queryParam("authKey", AUTH_KEY)
+                .queryParam("libCode", libCode)
+                .queryParam("isbn13", isbn)
+                .queryParam("format", "json")
+                .encode()
+                .build()
+                .toUri();
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setAccept(List.of(MediaType.ALL));
+        HttpEntity<String> entity = new HttpEntity<>(headers);
+
+        ResponseEntity<BookSearchReseponseDto> res =
+                restTemplate.exchange(uri, HttpMethod.GET, entity, BookSearchReseponseDto.class);
+
+        return new AbstractMap.SimpleEntry<>(libCode, res.getBody());
+    }
+    static double haversine(double lat1, double lon1, double lat2, double lon2) {
+        double R = 6371.0; // km
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+                        Math.sin(dLon/2) * Math.sin(dLon/2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
+    }
     public void putGeotRedisLibrary(){
         List<Library> all = repository.findAll();
 
@@ -178,15 +196,4 @@ public class LibraryServiceImpl implements  LibraryService{
         }
 
     }
-    static double haversine(double lat1, double lon1, double lat2, double lon2) {
-        double R = 6371.0; // km
-        double dLat = Math.toRadians(lat2 - lat1);
-        double dLon = Math.toRadians(lon2 - lon1);
-        double a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
-                        Math.sin(dLon/2) * Math.sin(dLon/2);
-        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        return R * c;
-    }
-
 }
