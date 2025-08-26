@@ -8,5 +8,5 @@ import java.util.List;
 
 @Repository
 public interface LibraryRepository extends MongoRepository<Library, String> {
-
+    List<Library> findByLibCodeIn(List<Integer> libCodes);
 }

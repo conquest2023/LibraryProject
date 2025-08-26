@@ -12,7 +12,7 @@ public class Library {
     private String id;
 
     @Field("libCode")
-    private String libCode;
+    private int libCode;
 
     @Field("libName")
     private String libName;

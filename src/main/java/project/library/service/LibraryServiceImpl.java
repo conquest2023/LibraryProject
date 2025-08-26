@@ -26,6 +26,7 @@ import java.net.URI;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -51,10 +52,10 @@ public class LibraryServiceImpl implements  LibraryService{
     private static final String AUTH_KEY = "1df2f040d9555558e014f541e2908356008ca9e3aa7a1d9c43ec2c15e54f5f4b";
 
 
-    public List<Library> calculateDistance(LocationDto locationDto) {
+    public List<NearestLibraryDetail> calculateDistance(LocationDto locationDto) {
 
         Point userLocation = new Point(locationDto.getLongitude(), locationDto.getLatitude());
-        Distance radius = new Distance(5, RedisGeoCommands.DistanceUnit.KILOMETERS);
+        Distance radius = new Distance(10, RedisGeoCommands.DistanceUnit.KILOMETERS);
         Circle area = new Circle(userLocation, radius);
         GeoResults<RedisGeoCommands.GeoLocation<String>> results =
                 redisTemplate.opsForGeo().radius(
@@ -92,7 +93,7 @@ public class LibraryServiceImpl implements  LibraryService{
                 })
                 .map(e -> {
                     String lib = e.getKey();
-                    Point p = coordByLib.get(lib);       // 재조회 없음!
+                    Point p = coordByLib.get(lib);
                     if (p == null) return null;
                     double km = haversine(uLat, uLon, p.getY(), p.getX());
                     return new NearestLibrary(lib, p.getY(), p.getX(), km);
@@ -101,11 +102,33 @@ public class LibraryServiceImpl implements  LibraryService{
                 .sorted(Comparator.comparingDouble(NearestLibrary::getDistanceKm))
                 .limit(3)
                 .toList();
+        List<Integer> libCodes = computed.stream()
+                .map(lib -> Integer.parseInt(lib.getLibCode())) // String → int 파싱
+                .toList();
 
         log.info("TOP3: {}", computed);
+        List<Library> libs = repository.findByLibCodeIn(libCodes);
+        log.info(libs.toString());
+        Map<String, Library> libMap = libs.stream()
+                .collect(Collectors.toMap(l -> String.valueOf(l.getLibCode()), Function.identity(), (a, b)->a));
 
-        // 4) 엔티티로 매핑해서 반환
-        return null;
+        List<NearestLibraryDetail> result = new ArrayList<>();
+        for (NearestLibrary n : computed) {
+            Library lib = libMap.get(n.getLibCode());
+            if (lib != null) {
+                result.add(new NearestLibraryDetail(
+                        n.getLibCode(),
+                        lib.getLibName(),
+                        lib.getAddress(),
+                        lib.getTel(),
+                        lib.getLatitude(),
+                        lib.getLongitude(),
+                        n.getDistanceKm()
+                ));
+            }
+        }
+        log.info(result.toString());
+        return result;
     }
 
 
@@ -189,7 +212,7 @@ public class LibraryServiceImpl implements  LibraryService{
             libraryData.put("tel", library.getTel());
             libraryData.put("homepage", library.getHomepage());
             libraryData.put("closed",library.getClosed());
-            libraryData.put("libCode",library.getLibCode());
+//            libraryData.put("libCode",library.getLibCode());
             // 필요에 따라 다른 필드들도 추가
 
             redisTemplate.opsForHash().putAll(hashKey, libraryData);
