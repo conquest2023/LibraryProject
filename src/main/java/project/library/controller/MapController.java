@@ -8,6 +8,13 @@ public class MapController
 {
 
 
+    @GetMapping("/")
+    public String home(){
+
+        return  "home.html";
+
+    }
+
 
     @GetMapping("/map")
     public String getMap()

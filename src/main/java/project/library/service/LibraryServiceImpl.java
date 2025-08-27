@@ -108,9 +108,9 @@ public class LibraryServiceImpl implements  LibraryService{
 
         log.info("TOP3: {}", computed);
         List<Library> libs = repository.findByLibCodeIn(libCodes);
-        log.info(libs.toString());
         Map<String, Library> libMap = libs.stream()
-                .collect(Collectors.toMap(l -> String.valueOf(l.getLibCode()), Function.identity(), (a, b)->a));
+                .collect(Collectors.toMap(l ->
+                        String.valueOf(l.getLibCode()), Function.identity(), (a, b)->a));
 
         List<NearestLibraryDetail> result = new ArrayList<>();
         for (NearestLibrary n : computed) {
@@ -127,7 +127,6 @@ public class LibraryServiceImpl implements  LibraryService{
                 ));
             }
         }
-        log.info(result.toString());
         return result;
     }
 

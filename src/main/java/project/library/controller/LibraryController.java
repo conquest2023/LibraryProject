@@ -23,6 +23,7 @@ import java.util.Optional;
 
 @Slf4j
 @Controller
+@RequestMapping("/api")
 @RequiredArgsConstructor
 public class LibraryController {
 
@@ -35,10 +36,10 @@ public class LibraryController {
     private static final String AUTH_KEY = "1df2f040d9555558e014f541e2908356008ca9e3aa7a1d9c43ec2c15e54f5f4b";
 
 
-    @GetMapping("/")
-    public String  indexPage(){
-        return "/index.html";
-    }
+//    @GetMapping("/")
+//    public String  indexPage(){
+//        return "/index.html";
+//    }
 
     @GetMapping("/search/book")
     @ResponseBody
@@ -65,22 +66,15 @@ public class LibraryController {
 // 2. DTO 객체로 깔끔하게 데이터 받기
         BookSearchReseponseDto searchResponse = responseEntity.getBody();
 
-// 3. 안전하고 명확하게 데이터 접근
-        if (searchResponse != null && searchResponse.getResponse() != null) {
-            List<BookDetailDto> docWrappers = searchResponse.getResponse().getDocs();
+
+        List<BookDetailDto> docWrappers = searchResponse.getResponse().getDocs();
 
             // Java Stream을 사용해 더 간결하게 책 목록만 추출
-            List<BookDto> books = docWrappers.stream()
+        List<BookDto> books = docWrappers.stream()
                     .map(BookDetailDto::getDoc)
                     .toList();
 
-            for (BookDto book : books) {
-                log.info("책 제목: {}", book.getBookname());
-                log.info("저자: {}", book.getAuthors());
-                log.info("");
-            }
-        }
-        return ResponseEntity.ok(Map.of("ok",searchResponse));
+        return ResponseEntity.ok(Map.of("books", books));
     }
 
     @GetMapping("/detail/book")
