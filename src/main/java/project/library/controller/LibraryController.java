@@ -139,22 +139,14 @@ public class LibraryController {
 // 2. DTO 객체로 깔끔하게 데이터 받기
         BookSearchReseponseDto searchResponse = responseEntity.getBody();
 
-// 3. 안전하고 명확하게 데이터 접근
-        if (searchResponse != null && searchResponse.getResponse() != null) {
-            List<BookDetailDto> docWrappers = searchResponse.getResponse().getDocs();
+        List<BookDetailDto> docWrappers = searchResponse.getResponse().getDocs();
 
             // Java Stream을 사용해 더 간결하게 책 목록만 추출
-            List<BookDto> books = docWrappers.stream()
+        List<BookDto> books = docWrappers.stream()
                     .map(BookDetailDto::getBook)
                     .toList();
 
-            for (BookDto book : books) {
-                log.info("책 제목: {}", book.getBookname());
-                log.info("저자: {}", book.getAuthors());
-                log.info("");
-            }
-        }
-        return ResponseEntity.ok(Map.of("ok",searchResponse));
+        return ResponseEntity.ok(Map.of("books",books));
 
     }
 

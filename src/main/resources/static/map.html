@@ -1,128 +1,128 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8"/>
-    <title>Kakao 지도 시작하기</title>
-    <style>
-        #map { width: 1500px; height: 800px; }
-        #status { margin: 8px 0; font-size: 14px; }
-    </style>
-</head>
-<body>
-<div id="status">위치 요청 준비중...</div>
-<div id="map"></div>
+<!--<!DOCTYPE html>-->
+<!--<html>-->
+<!--<head>-->
+<!--    <meta charset="utf-8"/>-->
+<!--    <title>Kakao 지도 시작하기</title>-->
+<!--    <style>-->
+<!--        #map { width: 1500px; height: 800px; }-->
+<!--        #status { margin: 8px 0; font-size: 14px; }-->
+<!--    </style>-->
+<!--</head>-->
+<!--<body>-->
+<!--<div id="status">위치 요청 준비중...</div>-->
+<!--<div id="map"></div>-->
 
-<!-- SDK는 한 번만! 필요한 라이브러리를 한꺼번에 지정 -->
-<script src="//dapi.kakao.com/v2/maps/sdk.js?appkey=ea8e2c41bf229699a8e7e8d2a0b3111a&libraries=services,clusterer,drawing"></script>
-<script>
-    // 1) 지도 초기화
-    const mapEl = document.getElementById('map');
-    const map = new kakao.maps.Map(mapEl, {
-        center: new kakao.maps.LatLng(37.48651855600127, 126.81158783645573),
-        level: 3
-    });
+<!--&lt;!&ndash; SDK는 한 번만! 필요한 라이브러리를 한꺼번에 지정 &ndash;&gt;-->
+<!--<script src="//dapi.kakao.com/v2/maps/sdk.js?appkey=ea8e2c41bf229699a8e7e8d2a0b3111a&libraries=services,clusterer,drawing"></script>-->
+<!--<script>-->
+<!--    // 1) 지도 초기화-->
+<!--    const mapEl = document.getElementById('map');-->
+<!--    const map = new kakao.maps.Map(mapEl, {-->
+<!--        center: new kakao.maps.LatLng(37.48651855600127, 126.81158783645573),-->
+<!--        level: 3-->
+<!--    });-->
 
-    const statusEl = document.getElementById('status');
+<!--    const statusEl = document.getElementById('status');-->
 
-    // 2) 페이지 로드 시 자동으로 위치 요청
-    window.addEventListener('load', () => {
-        if (!navigator.geolocation) {
-            statusEl.textContent = 'Geolocation API를 지원하지 않는 브라우저입니다.';
-            return;
-        }
-        statusEl.textContent = '현재 위치를 가져오는 중...';
-        navigator.geolocation.getCurrentPosition(onSuccess, onError, {
-            enableHighAccuracy: true,
-            timeout: 8000,
-            maximumAge: 0
-        });
-    });
+<!--    // 2) 페이지 로드 시 자동으로 위치 요청-->
+<!--    window.addEventListener('load', () => {-->
+<!--        if (!navigator.geolocation) {-->
+<!--            statusEl.textContent = 'Geolocation API를 지원하지 않는 브라우저입니다.';-->
+<!--            return;-->
+<!--        }-->
+<!--        statusEl.textContent = '현재 위치를 가져오는 중...';-->
+<!--        navigator.geolocation.getCurrentPosition(onSuccess, onError, {-->
+<!--            enableHighAccuracy: true,-->
+<!--            timeout: 8000,-->
+<!--            maximumAge: 0-->
+<!--        });-->
+<!--    });-->
 
-    async function onSuccess(pos) {
-        const lat = pos.coords.latitude;
-        const lon = pos.coords.longitude;
-        statusEl.textContent = `위치 획득 완료 (lat: ${lat.toFixed(5)}, lon: ${lon.toFixed(5)}) — 가까운 도서관 조회 중...`;
+<!--    async function onSuccess(pos) {-->
+<!--        const lat = pos.coords.latitude;-->
+<!--        const lon = pos.coords.longitude;-->
+<!--        statusEl.textContent = `위치 획득 완료 (lat: ${lat.toFixed(5)}, lon: ${lon.toFixed(5)}) — 가까운 도서관 조회 중...`;-->
 
-        // 2-1) 사용자 위치 마커
-        const userPos = new kakao.maps.LatLng(lat, lon);
-        new kakao.maps.Marker({ position: userPos, map });
-        map.setCenter(userPos);
+<!--        // 2-1) 사용자 위치 마커-->
+<!--        const userPos = new kakao.maps.LatLng(lat, lon);-->
+<!--        new kakao.maps.Marker({ position: userPos, map });-->
+<!--        map.setCenter(userPos);-->
 
-        // 3) 백엔드로 위치 전송 (POST /location) — 응답은 { nearest: NearestLibraryDetailDto[] }
-        try {
-            const resp = await fetch('/location', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ latitude: lat, longitude: lon, isbn: 9791161757926 })
-            });
-            if (!resp.ok) throw new Error('서버 에러: ' + resp.status);
+<!--        // 3) 백엔드로 위치 전송 (POST /location) — 응답은 { nearest: NearestLibraryDetailDto[] }-->
+<!--        try {-->
+<!--            const resp = await fetch('/location', {-->
+<!--                method: 'POST',-->
+<!--                headers: { 'Content-Type': 'application/json' },-->
+<!--                body: JSON.stringify({ latitude: lat, longitude: lon, isbn: 9791161757926 })-->
+<!--            });-->
+<!--            if (!resp.ok) throw new Error('서버 에러: ' + resp.status);-->
 
-            const data = await resp.json();
-            console.log('[DEBUG] /location response:', data);
+<!--            const data = await resp.json();-->
+<!--            console.log('[DEBUG] /location response:', data);-->
 
-            const nearestRaw = Array.isArray(data?.nearest) ? data.nearest : (Array.isArray(data) ? data : []);
-            console.log('[DEBUG] nearestRaw length:', nearestRaw.length);
+<!--            const nearestRaw = Array.isArray(data?.nearest) ? data.nearest : (Array.isArray(data) ? data : []);-->
+<!--            console.log('[DEBUG] nearestRaw length:', nearestRaw.length);-->
 
-            const nearest = nearestRaw.map(x => ({
-                libCode: x.libCode ?? '',
-                libName: x.libName ?? '',
-                address: x.address ?? '',
-                tel: x.tel ?? '',
-                // latitude/longitude 우선, 없으면 lat/lon 사용
-                latitude: (typeof x.latitude === 'number') ? x.latitude : x.lat,
-                longitude: (typeof x.longitude === 'number') ? x.longitude : x.lon,
-                distanceKm: x.distanceKm
-            })).filter(x => typeof x.latitude === 'number' && typeof x.longitude === 'number');
+<!--            const nearest = nearestRaw.map(x => ({-->
+<!--                libCode: x.libCode ?? '',-->
+<!--                libName: x.libName ?? '',-->
+<!--                address: x.address ?? '',-->
+<!--                tel: x.tel ?? '',-->
+<!--                // latitude/longitude 우선, 없으면 lat/lon 사용-->
+<!--                latitude: (typeof x.latitude === 'number') ? x.latitude : x.lat,-->
+<!--                longitude: (typeof x.longitude === 'number') ? x.longitude : x.lon,-->
+<!--                distanceKm: x.distanceKm-->
+<!--            })).filter(x => typeof x.latitude === 'number' && typeof x.longitude === 'number');-->
 
-            const bounds = new kakao.maps.LatLngBounds();
-            bounds.extend(userPos);
+<!--            const bounds = new kakao.maps.LatLngBounds();-->
+<!--            bounds.extend(userPos);-->
 
-            nearest.slice(0, 3).forEach((item, idx) => {
-                const pos = new kakao.maps.LatLng(item.latitude, item.longitude);
-                const marker = new kakao.maps.Marker({ position: pos, map });
-                const dist = typeof item.distanceKm === 'number' ? item.distanceKm.toFixed(2) : '';
+<!--            nearest.slice(0, 3).forEach((item, idx) => {-->
+<!--                const pos = new kakao.maps.LatLng(item.latitude, item.longitude);-->
+<!--                const marker = new kakao.maps.Marker({ position: pos, map });-->
+<!--                const dist = typeof item.distanceKm === 'number' ? item.distanceKm.toFixed(2) : '';-->
 
-                // 길찾기 링크 생성
-                // 출발지: '현위치' 등 임의 이름 + 사용자의 lat, lon
-                // 도착지: 도서관 이름 + 도서관 lat, lon
-                const dirLink = `https://map.kakao.com/link/from/현위치,${lat},${lon}/to/${escapeHtml(item.libName || '')},${item.latitude},${item.longitude}`;
+<!--                // 길찾기 링크 생성-->
+<!--                // 출발지: '현위치' 등 임의 이름 + 사용자의 lat, lon-->
+<!--                // 도착지: 도서관 이름 + 도서관 lat, lon-->
+<!--                const dirLink = `https://map.kakao.com/link/from/현위치,${lat},${lon}/to/${escapeHtml(item.libName || '')},${item.latitude},${item.longitude}`;-->
 
-                const iw = new kakao.maps.InfoWindow({
-                    content: `
-      <div style="padding:6px 10px; font-size:12px; line-height:1.4;">
-        <b>TOP ${idx + 1}. ${escapeHtml(item.libName || '')}</b><br/>
-        거리: ${dist} km<br/>
-        주소: ${escapeHtml(item.address || '')}<br/>
-        전화: ${escapeHtml(item.tel || '')}<br/>
-        <a href="${dirLink}" target="_blank" style="color:#0070f3;text-decoration:underline;">길찾기(카카오맵으로 이동)</a>
-      </div>`
-                });
-                iw.open(map, marker);
-                bounds.extend(pos);
-            });
+<!--                const iw = new kakao.maps.InfoWindow({-->
+<!--                    content: `-->
+<!--      <div style="padding:6px 10px; font-size:12px; line-height:1.4;">-->
+<!--        <b>TOP ${idx + 1}. ${escapeHtml(item.libName || '')}</b><br/>-->
+<!--        거리: ${dist} km<br/>-->
+<!--        주소: ${escapeHtml(item.address || '')}<br/>-->
+<!--        전화: ${escapeHtml(item.tel || '')}<br/>-->
+<!--        <a href="${dirLink}" target="_blank" style="color:#0070f3;text-decoration:underline;">길찾기(카카오맵으로 이동)</a>-->
+<!--      </div>`-->
+<!--                });-->
+<!--                iw.open(map, marker);-->
+<!--                bounds.extend(pos);-->
+<!--            });-->
 
-            map.setBounds(bounds);
-            statusEl.textContent = `가까운 도서관 ${nearest.length}곳 표시 완료!`;
-        } catch (e) {
-            console.error(e);
-            statusEl.textContent = '가까운 도서관 조회 실패: ' + e.message;
-        }
-    }
+<!--            map.setBounds(bounds);-->
+<!--            statusEl.textContent = `가까운 도서관 ${nearest.length}곳 표시 완료!`;-->
+<!--        } catch (e) {-->
+<!--            console.error(e);-->
+<!--            statusEl.textContent = '가까운 도서관 조회 실패: ' + e.message;-->
+<!--        }-->
+<!--    }-->
 
-    function onError(err) {
-        let msg = '알 수 없는 오류';
-        if (err.code === err.PERMISSION_DENIED) msg = '사용자가 위치 정보 접근을 거부했습니다.';
-        else if (err.code === err.POSITION_UNAVAILABLE) msg = '위치 정보를 사용할 수 없습니다.';
-        else if (err.code === err.TIMEOUT) msg = '위치 정보 요청이 시간 초과되었습니다.';
-        statusEl.textContent = '오류: ' + msg;
-    }
+<!--    function onError(err) {-->
+<!--        let msg = '알 수 없는 오류';-->
+<!--        if (err.code === err.PERMISSION_DENIED) msg = '사용자가 위치 정보 접근을 거부했습니다.';-->
+<!--        else if (err.code === err.POSITION_UNAVAILABLE) msg = '위치 정보를 사용할 수 없습니다.';-->
+<!--        else if (err.code === err.TIMEOUT) msg = '위치 정보 요청이 시간 초과되었습니다.';-->
+<!--        statusEl.textContent = '오류: ' + msg;-->
+<!--    }-->
 
-    // XSS 방지용 간단 escape
-    function escapeHtml(s) {
-        return String(s).replace(/[&<>"']/g, m => ({
-            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-        }[m]));
-    }
-</script>
-</body>
-</html>
+<!--    // XSS 방지용 간단 escape-->
+<!--    function escapeHtml(s) {-->
+<!--        return String(s).replace(/[&<>"']/g, m => ({-->
+<!--            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'-->
+<!--        }[m]));-->
+<!--    }-->
+<!--</script>-->
+<!--</body>-->
+<!--</html>-->
