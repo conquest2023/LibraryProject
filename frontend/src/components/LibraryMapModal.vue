@@ -2,7 +2,7 @@
   <div class="modal-backdrop" @click.self="closeModal">
     <div class="modal-panel">
       <div class="modal-header">
-        <h3>가까운 도서관 찾기</h3>
+        <h3>내 주변 도서관 지도</h3>
         <button @click="closeModal" class="close-button" aria-label="닫기">&times;</button>
       </div>
       <div class="modal-content">
@@ -16,116 +16,107 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 
-// 부모로부터 isbn을 props로 받음
+// 부모로부터 도서관 목록과 사용자 위치를 props로 받음
 const props = defineProps({
-  isbn: { type: String, required: true }
+  isbn: { type: String, required: true },
+  libraries: { type: Array, default: () => [] },
+  userPosition: { type: Object, default: null }
 });
 
-// 부모에게 이벤트를 보내기 위한 emit 함수
 const emit = defineEmits(['close']);
 
 const mapContainer = ref(null);
-const statusMessage = ref('위치 요청 준비중...');
+const statusMessage = ref('지도를 준비 중입니다...');
 let map = null;
 
 const closeModal = () => {
   emit('close');
 };
 
-// HTML 태그 escape 함수 (XSS 방지)
 const escapeHtml = (s) => {
   return String(s).replace(/[&<>"']/g, m => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
   }[m]));
 };
 
-// Geolocation 성공 콜백
-const onSuccess = async (pos) => {
-  const lat = pos.coords.latitude;
-  const lon = pos.coords.longitude;
-  statusMessage.value = `위치 획득 완료 — 가까운 도서관 조회 중...`;
+onMounted(() => {
+  if (!window.kakao || !window.kakao.maps) {
+    statusMessage.value = '카카오 지도 SDK를 불러오는 데 실패했습니다.';
+    return;
+  }
+  if (!mapContainer.value) {
+    statusMessage.value = '지도를 표시할 컨테이너를 찾을 수 없습니다.';
+    return;
+  }
 
-  const userPosition = new window.kakao.maps.LatLng(lat, lon);
+  // 지도 초기화
+  const options = {
+    center: new window.kakao.maps.LatLng(37.566826, 126.9786567), // 기본 위치: 서울시청
+    level: 7
+  };
+  map = new window.kakao.maps.Map(mapContainer.value, options);
 
-  // 사용자 위치 마커 표시 및 지도 중앙 설정
-  new window.kakao.maps.Marker({ position: userPosition, map });
-  map.setCenter(userPosition);
+  const bounds = new window.kakao.maps.LatLngBounds();
+  let markerCount = 0;
 
-  try {
-    const resp = await fetch('/api/location', { // 백엔드 API 경로
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ latitude: lat, longitude: lon, isbn: props.isbn })
+  // 1. 사용자 위치 마커 표시
+  if (props.userPosition) {
+    const userPos = new window.kakao.maps.LatLng(props.userPosition.lat, props.userPosition.lon);
+
+    // 사용자는 다른 이미지의 마커를 사용
+    const userMarkerImage = new window.kakao.maps.MarkerImage(
+        'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_red.png',
+        new window.kakao.maps.Size(64, 69),
+        { offset: new window.kakao.maps.Point(27, 69) }
+    );
+    new window.kakao.maps.Marker({
+      position: userPos,
+      map: map,
+      image: userMarkerImage,
+      title: '현재 위치'
     });
-    if (!resp.ok) throw new Error(`서버 에러: ${resp.status}`);
+    bounds.extend(userPos);
+    markerCount++;
+  }
 
-    const data = await resp.json();
-    const libraries = Array.isArray(data.nearest) ? data.nearest : [];
-
-    if (libraries.length === 0) {
-      statusMessage.value = '이 책을 소장하고 있는 가까운 도서관이 없습니다.';
-      return;
-    }
-
-    const bounds = new window.kakao.maps.LatLngBounds();
-    bounds.extend(userPosition);
-
-    libraries.slice(0, 5).forEach((lib, idx) => { // 최대 5개 표시
+  // 2. 도서관 마커 표시
+  if (props.libraries.length > 0) {
+    props.libraries.forEach((lib) => {
       const libPosition = new window.kakao.maps.LatLng(lib.latitude, lib.longitude);
-      const marker = new window.kakao.maps.Marker({ position: libPosition, map });
+      const marker = new window.kakao.maps.Marker({ position: libPosition, map: map, title: lib.libName });
 
-      const dirLink = `https://map.kakao.com/link/from/현위치,${lat},${lon}/to/${escapeHtml(lib.libName)},${lib.latitude},${lib.longitude}`;
+      const dirLink = `https://map.kakao.com/link/to/${escapeHtml(lib.libName)},${lib.latitude},${lib.longitude}`;
 
       const infowindow = new window.kakao.maps.InfoWindow({
         content: `
-          <div style="padding:8px;font-size:12px;line-height:1.5;">
-            <b>${idx + 1}. ${escapeHtml(lib.libName)}</b><br/>
+          <div style="padding:8px;font-size:12px;line-height:1.5; width: 180px;">
+            <b style="display: block; margin-bottom: 4px; white-space: normal;">${escapeHtml(lib.libName)}</b>
             거리: ${lib.distanceKm?.toFixed(2)}km<br/>
             <a href="${dirLink}" target="_blank" style="color:#007bff;">길찾기</a>
           </div>`,
         removable: true
       });
 
-      infowindow.open(map, marker);
+      // 마커에 클릭 이벤트를 등록합니다
+      window.kakao.maps.event.addListener(marker, 'click', function() {
+        infowindow.open(map, marker);
+      });
+
       bounds.extend(libPosition);
+      markerCount++;
     });
-
-    map.setBounds(bounds);
-    statusMessage.value = `책을 소장한 가까운 도서관 ${libraries.length}곳을 찾았습니다!`;
-
-  } catch (e) {
-    console.error(e);
-    statusMessage.value = '도서관 조회 실패: ' + e.message;
   }
-};
 
-// Geolocation 실패 콜백
-const onError = (err) => {
-  let msg = '알 수 없는 오류';
-  if (err.code === 1) msg = '사용자가 위치 정보 접근을 거부했습니다.';
-  else if (err.code === 2) msg = '위치 정보를 사용할 수 없습니다.';
-  else if (err.code === 3) msg = '위치 정보 요청이 시간 초과되었습니다.';
-  statusMessage.value = '오류: ' + msg;
-};
-
-// 컴포넌트가 마운트되면 지도 초기화 및 위치 요청
-onMounted(() => {
-  if (window.kakao && window.kakao.maps && mapContainer.value) {
-    const options = {
-      center: new window.kakao.maps.LatLng(37.566826, 126.9786567),
-      level: 3
-    };
-    map = new window.kakao.maps.Map(mapContainer.value, options);
-
-    // Geolocation API 요청
-    if (navigator.geolocation) {
-      statusMessage.value = '현재 위치를 가져오는 중...';
-      navigator.geolocation.getCurrentPosition(onSuccess, onError);
-    } else {
-      statusMessage.value = '이 브라우저에서는 위치 정보를 지원하지 않습니다.';
-    }
+  // 3. 지도의 경계를 모든 마커가 보이도록 설정
+  if (markerCount > 0) {
+    map.setBounds(bounds);
+    statusMessage.value = `총 ${props.libraries.length}개의 도서관 위치를 표시했습니다.`;
   } else {
-    statusMessage.value = '카카오 지도 SDK를 불러오는 데 실패했습니다.';
+    // 사용 위치도, 도서관도 없을 경우
+    if (props.userPosition) {
+      map.setCenter(new window.kakao.maps.LatLng(props.userPosition.lat, props.userPosition.lon));
+    }
+    statusMessage.value = '표시할 도서관 정보가 없습니다.';
   }
 });
 </script>
@@ -174,6 +165,9 @@ onMounted(() => {
 }
 .modal-content {
   padding: 24px;
+  /* 모달의 높이가 화면보다 커지는 것을 방지 */
+  max-height: calc(100vh - 150px);
+  overflow-y: auto;
 }
 #status-message {
   margin-bottom: 12px;

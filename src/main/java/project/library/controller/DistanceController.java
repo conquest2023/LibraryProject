@@ -22,8 +22,6 @@ public class DistanceController {
     private final LibraryServiceImpl libraryService;
     @PostMapping("/location")
     public ResponseEntity<?> receiveLocation(@RequestBody LocationDto locationDto) {
-        log.info("Received Latitude: " + locationDto.getLatitude());
-        log.info("Received Longitude: " + locationDto.getLongitude());
         List<NearestLibraryDetail> nearestLibraries = libraryService.calculateDistance(locationDto);
         return ResponseEntity.ok(Map.of("nearest",nearestLibraries));
     }

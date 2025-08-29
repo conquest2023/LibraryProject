@@ -1,12 +1,25 @@
 <template>
-  <section class="result-wrap">
-    <div class="status">{{ statusMessage }}</div>
-    <div class="grid">
-      <BookCard
-          v-for="book in books"
-          :key="book.isbn13 || book.bookname"
-          :book="book"
-      />
+  <section class="result-section">
+    <div v-if="isLoading" class="loading-state">
+      <div class="spinner"></div>
+      <p>데이터를 불러오는 중입니다...</p>
+    </div>
+
+    <div v-else>
+      <div class="status">{{ statusMessage }}</div>
+
+      <div v-if="books.length > 0" class="grid">
+        <BookCard
+            v-for="book in books"
+            :key="book.isbn13 || book.bookname"
+            :book="book"
+        />
+      </div>
+
+      <div v-else-if="statusMessage" class="empty-state">
+        <p>검색어와 일치하는 도서가 없습니다.</p>
+        <p class="sub-text">다른 키워드로 검색해 보세요.</p>
+      </div>
     </div>
   </section>
 </template>
@@ -14,22 +27,49 @@
 <script setup>
 import BookCard from './BookCard.vue';
 
-// 부모로부터 책 목록과 상태 메시지를 props로 받음
 defineProps({
-  books: {
-    type: Array,
-    required: true,
-  },
-  statusMessage: {
-    type: String,
-    default: '',
-  },
+  books: { type: Array, required: true },
+  statusMessage: { type: String, default: '' },
+  isLoading: { type: Boolean, default: false } // isLoading prop 추가
 });
 </script>
 
 <style scoped>
-/* 결과 리스트 관련 스타일만 이곳에 둡니다. */
-.result-wrap { max-width: 1100px; margin: 24px auto 80px; padding-inline: 16px; }
-.status { margin: 4px 0 20px; color: #6b7480; font-size: 14px; }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+.result-section {
+  min-height: 300px;
+}
+.status {
+  margin-bottom: 1.5rem;
+  color: var(--text-color-secondary);
+  font-size: 0.9rem;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+.loading-state, .empty-state {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 4rem 0;
+  color: var(--text-color-secondary);
+}
+.empty-state .sub-text {
+  font-size: 0.9rem;
+  margin-top: 0.25rem;
+}
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid var(--border-color);
+  border-top-color: var(--primary-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
 </style>

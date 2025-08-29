@@ -12,7 +12,6 @@ import project.library.controller.dto.book.BookDetailDto;
 import project.library.controller.dto.book.BookDto;
 import project.library.controller.dto.book.LibraryResponseDto;
 import project.library.controller.dto.book.search.BookSearchReseponseDto;
-import project.library.repository.collection.Library;
 import project.library.service.LibraryServiceImpl;
 
 import java.net.URI;
@@ -29,6 +28,7 @@ public class LibraryController {
 
 
     private final LibraryServiceImpl libraryService;
+
     private final RestTemplate restTemplate;
 
     private static final String API_BASE_URL = "http://data4library.kr/api";
@@ -41,18 +41,26 @@ public class LibraryController {
 //        return "/index.html";
 //    }
 
+    @GetMapping("/increase")
+    @ResponseBody
+    public  ResponseEntity<?> getIncreaseBook(){
+        List<BookDto> increaseBook = libraryService.getLatestDailyBooks();
+
+        return ResponseEntity.ok(Map.of("books",increaseBook));
+    }
+
     @GetMapping("/search/book")
     @ResponseBody
-    public ResponseEntity<?> getIsbn(@RequestParam String title){
-
+    public ResponseEntity<?> getIsbn(@RequestParam(required = false) String title){
         URI uri = UriComponentsBuilder
                 .fromUriString(API_BASE_URL)
                 .pathSegment("srchBooks")
                 .queryParam("authKey", AUTH_KEY)
-                .queryParam("title", title) // 입력받은 검색어
+                .queryParam("title", title.replaceAll("\\s+", "")) // 입력받은 검색어
+                .queryParam("sort","pubYear")
                 .queryParam("pageNo", 1)
-                .queryParam("pageSize", 20)
-                .queryParam("format", "json") // 응답 형식을 JSON으로 지정
+                .queryParam("pageSize", 40)
+                .queryParam("format", "json")
                 .encode() // URL에 포함될 수 없는 문자를 인코딩
                 .build()
                 .toUri();
@@ -63,13 +71,15 @@ public class LibraryController {
         ResponseEntity<BookSearchReseponseDto> responseEntity =
                 restTemplate.exchange(uri, HttpMethod.GET, entity, BookSearchReseponseDto.class);
 
-// 2. DTO 객체로 깔끔하게 데이터 받기
+        // 2. DTO 객체로 깔끔하게 데이터 받기
         BookSearchReseponseDto searchResponse = responseEntity.getBody();
 
 
         List<BookDetailDto> docWrappers = searchResponse.getResponse().getDocs();
 
-            // Java Stream을 사용해 더 간결하게 책 목록만 추출
+
+
+        // Java Stream을 사용해 더 간결하게 책 목록만 추출
         List<BookDto> books = docWrappers.stream()
                     .map(BookDetailDto::getDoc)
                     .toList();
@@ -97,10 +107,12 @@ public class LibraryController {
         HttpEntity<String> entity = new HttpEntity<>(headers);
         ResponseEntity<LibraryResponseDto> responseEntity =
                 restTemplate.exchange(uri, HttpMethod.GET, entity, LibraryResponseDto.class);
+
+
+
         // 2. 응답 본문(Body)을 DTO 객체로 받음
         LibraryResponseDto libraryResponse = responseEntity.getBody();
 
-        // 3. getter를 이용해 원하는 값에 쉽게 접근
         if (libraryResponse != null && libraryResponse.getResponse() != null &&
                 !libraryResponse.getResponse().getDetail().isEmpty()) {
 
@@ -166,7 +178,7 @@ public class LibraryController {
                 .queryParam("pageNo", 1)
                 .queryParam("pageSize", 50)
                 .queryParam("format", "json") // 응답 형식을 JSON으로 지정
-                .encode() // URL에 포함될 수 없는 문자를 인코딩
+                .encode()
                 .build()
                 .toUri();
 
