@@ -186,19 +186,27 @@ jobs:
 
       - name: Update Deployment Image
         run: |
-          if [ "${{ needs.frontend.result }}" = "success" ]; then
-            yq -i -y '
-          (select(.kind == "Deployment" and .metadata.name == "library-front")
-           .spec.template.spec.containers[]
-            | select(.name == "library-front")
-              ).image = "wngud1/front-library:main-<sha>"' cd/front.yaml
-
-          fi
-          if [ "${{ needs.backend.result }}" = "success" ]; then
-          yq -i -y '
-          (select(.kind == "Deployment" and .metadata.name == "library-backend")
-          .spec.template.spec.containers[] | select(.name == "library-backend") ).image = "wngud1/backend-library:main-<sha>"' cd/backend.yaml
-          fi
+            FRONT_TAG="${{ needs.frontend.outputs.image_tag }}"
+            BACK_TAG="${{ needs.backend.outputs.image_tag }}"
+            
+            # 프론트엔드 업데이트 로직
+            if [ "${{ needs.frontend.result }}" = "success" ]; then
+              # yq 명령에서 변수(FRONT_TAG)를 사용하여 실제 태그를 삽입
+              yq -i -y '
+              (select(.kind == "Deployment" and .metadata.name == "library-front")
+               .spec.template.spec.containers[]
+                | select(.name == "library-front")
+                  ).image = "wngud1/front-library:'"${FRONT_TAG}"'"' cd/front.yaml
+            fi
+            
+            # 백엔드 업데이트 로직
+            if [ "${{ needs.backend.result }}" = "success" ]; then
+              # yq 명령에서 변수(BACK_TAG)를 사용하여 실제 태그를 삽입
+              yq -i -y '
+              (select(.kind == "Deployment" and .metadata.name == "library-backend")
+              .spec.template.spec.containers[] | select(.name == "library-backend")
+              ).image = "wngud1/backend-library:'"${BACK_TAG}"'"' cd/backend.yaml
+            fi
 
       - name: Commit & Push
         run: |
