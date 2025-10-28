@@ -22,4 +22,4 @@ spec:
           env:
             - name: TZ
               value: "Asia/Seoul"
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy:  Always

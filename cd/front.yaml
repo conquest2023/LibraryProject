@@ -23,5 +23,6 @@ spec:
           image: wngud1/front-library:0.0.5
           ports:
             - containerPort: 80
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy:  Always
+
 ---
