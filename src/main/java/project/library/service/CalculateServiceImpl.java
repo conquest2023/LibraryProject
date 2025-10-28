@@ -42,7 +42,6 @@ public class CalculateServiceImpl implements CalculateService{
 
     private final RestTemplate restTemplate;
 
-
     private static final String API_BASE_URL = "http://data4library.kr/api";
 
     private static final String AUTH_KEY = "1df2f040d9555558e014f541e2908356008ca9e3aa7a1d9c43ec2c15e54f5f4b";
