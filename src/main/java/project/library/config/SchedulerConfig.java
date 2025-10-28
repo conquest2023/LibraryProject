@@ -3,15 +3,15 @@ package project.library.config;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
-import project.library.service.LibraryServiceImpl;
+import project.library.service.DailyBookCacheService;
 
 @Configuration
 @EnableScheduling
 public class SchedulerConfig {
 
-    private final LibraryServiceImpl bookService;
+    private final DailyBookCacheService bookService;
 
-    public SchedulerConfig(LibraryServiceImpl bookService) {
+    public SchedulerConfig(DailyBookCacheService bookService) {
         this.bookService = bookService;
     }
 

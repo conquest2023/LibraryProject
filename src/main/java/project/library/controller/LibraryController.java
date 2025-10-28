@@ -12,7 +12,8 @@ import project.library.controller.dto.book.BookDetailDto;
 import project.library.controller.dto.book.BookDto;
 import project.library.controller.dto.book.LibraryResponseDto;
 import project.library.controller.dto.book.search.BookSearchReseponseDto;
-import project.library.service.LibraryServiceImpl;
+import project.library.service.DailyBookCacheService;
+import project.library.service.LibraryGeoService;
 
 import java.net.URI;
 import java.util.List;
@@ -27,7 +28,7 @@ import java.util.Optional;
 public class LibraryController {
 
 
-    private final LibraryServiceImpl libraryService;
+    private final DailyBookCacheService libraryService;
 
     private final RestTemplate restTemplate;
 
@@ -209,12 +210,6 @@ public class LibraryController {
     }
 
 
-    @GetMapping("/test")
-    public ResponseEntity<?> getAllLibrary(){
 
-        libraryService.putGeotRedisLibrary();
-
-        return ResponseEntity.of(Optional.of(Map.of("library", "OK")));
-    }
 }
 
