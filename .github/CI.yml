@@ -1,0 +1,150 @@
+name: CI (frontend/backend split)
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+
+jobs:
+  # 1) 변경 경로 감지
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+      backend:  ${{ steps.filter.outputs.backend }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            frontend:
+              - 'frontend/**'
+            backend:
+              - 'src/**'
+              - 'build.gradle*'
+              - 'gradle/**'
+              - 'settings.gradle*'
+
+  # 2) 프론트 Lint/Test/Build & Docker
+  frontend:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_REPO: wngud1/front-library
+    steps:
+      - uses: actions/checkout@v4
+
+      # Node 세팅 + 캐시
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        working-directory: frontend
+        run: npm ci
+
+      - name: Lint & Test
+        working-directory: frontend
+        run: |
+          npm run lint --if-present
+          npm test --if-present -- --ci
+
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+
+      # Docker 메타데이터(자동 태깅)
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_REPO }}
+          tags: |
+            type=raw,value=main-${{ github.sha }}
+            type=raw,value=${{ github.ref_name }}-${{ github.sha }}
+            # package.json version이 있으면 semver 태그도 추가
+            type=semver,pattern={{version}},enable=true
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build & Push (Docker)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ env.IMAGE_REPO }}:buildcache
+          cache-to: type=registry,ref=${{ env.IMAGE_REPO }}:buildcache,mode=max
+
+  # 3) 백엔드 Lint/Test/Build & Docker
+  backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_REPO: wngud1/backend-library
+    steps:
+      - uses: actions/checkout@v4
+
+      # JDK + Gradle 캐시
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Gradle Test & Build (jar)
+        run: ./gradlew clean test bootJar --no-daemon
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_REPO }}
+          tags: |
+            type=raw,value=main-${{ github.sha }}
+            type=raw,value=${{ github.ref_name }}-${{ github.sha }}
+            # build.gradle의 version이 있으면 semver 태그도 추가
+            type=semver,pattern={{version}},enable=true
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build & Push (Docker)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile # 루트에 백엔드용 Dockerfile(멀티스테이지) 가정
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ env.IMAGE_REPO }}:buildcache
+          cache-to: type=registry,ref=${{ env.IMAGE_REPO }}:buildcache,mode=max
