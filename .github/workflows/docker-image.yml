@@ -1,10 +1,12 @@
-name: docker-image
+name: CI (frontend/backend split)
+
 on:
+  pull_request:
   push:
     branches: [ main ]
-  pull_request:
 
 jobs:
+  # 1) 변경 경로 감지
   changes:
     runs-on: ubuntu-latest
     outputs:
@@ -12,21 +14,18 @@ jobs:
       backend:  ${{ steps.filter.outputs.backend }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # 히스토리 필요!
-      - name: Detect changes
+      - uses: dorny/paths-filter@v3
         id: filter
-        uses: dorny/paths-filter@v3
         with:
-          # PR이면 자동으로 비교되고, push일 때는 아래 base로 보정
-          base: ${{ github.event.pull_request.base.sha || 'HEAD~1' }}
           filters: |
             frontend:
               - 'frontend/**'
-              - '.github/workflows/docker-image.yml'   # 빌드 스크립트 바뀌면 강제 실행하고 싶을 때
             backend:
-              - 'backend/**'
-              - '.github/workflows/docker-image.yml'
+              - 'src/**'
+              - 'build.gradle*'
+              - 'gradle/**'
+              - 'settings.gradle*'
+
 
   # 2) 프론트 Lint/Test/Build & Docker
   frontend:
