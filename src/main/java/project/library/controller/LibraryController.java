@@ -153,7 +153,7 @@ public class LibraryController {
 
         List<BookDetailDto> docWrappers = searchResponse.getResponse().getDocs();
 
-            // Java Stream을 사용해 더 간결하게 책 목록만 추출
+        // Java Stream을 사용해 더 간결하게 책 목록만 추출
         List<BookDto> books = docWrappers.stream()
                     .map(BookDetailDto::getBook)
                     .toList();
@@ -212,7 +212,7 @@ public class LibraryController {
     @GetMapping("/test")
     public ResponseEntity<?> getAllLibrary(){
 
-//        libraryService.putRedisLibrary();
+        libraryService.putGeotRedisLibrary();
 
         return ResponseEntity.of(Optional.of(Map.of("library", "OK")));
     }

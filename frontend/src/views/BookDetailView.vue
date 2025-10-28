@@ -59,17 +59,29 @@
 
         <div v-if="!isSearchingLibs && nearbyLibraries.length > 0" class="availability-results">
           <ul class="library-list">
-            <li v-for="lib in nearbyLibraries.slice(0, 3)" :key="lib.libCode" class="library-item">
+            <li v-for="lib in nearbyLibraries.slice(0, 5)" :key="lib.libCode" class="library-item">
               <div class="lib-info">
                 <span class="lib-name">{{ lib.libName }}</span>
                 <span class="lib-distance">약 {{ lib.distanceKm.toFixed(1) }}km</span>
+                <!-- 대출 가능 여부 표시 -->
+                <span
+                    class="lib-loan-status"
+                    :class="{ 'loan-yes': lib.isLoan === 'Y', 'loan-no': lib.isLoan === 'N' }"
+                >
+          {{ lib.isLoan === 'Y' ? '대출 가능' : '대출 불가능' }}
+        </span>
               </div>
-              <a :href="`https://map.kakao.com/link/to/${lib.libName},${lib.latitude},${lib.longitude}`" target="_blank" class="lib-map-link">지도</a>
+              <a
+                  :href="`https://map.kakao.com/link/to/${lib.libName},${lib.latitude},${lib.longitude}`"
+                  target="_blank"
+                  class="lib-map-link"
+              >
+                지도
+              </a>
             </li>
           </ul>
           <button @click="openMapModal" class="view-all-map-button">전체 지도 보기</button>
         </div>
-
         <div v-if="!isSearchingLibs && (searchError || (searchedAndNoResult))" class="no-content">
           <p>{{ searchError || '주변에 대출 가능한 도서관이 없습니다.' }}</p>
         </div>
@@ -162,7 +174,7 @@ const findNearbyLibraries = () => {
 
           const data = await res.json();
           const libs = Array.isArray(data.nearest) ? data.nearest : [];
-
+          console.log(libs)
           // 거리순으로 정렬
           libs.sort((a, b) => a.distanceKm - b.distanceKm);
           nearbyLibraries.value = libs;
@@ -260,7 +272,13 @@ watch(() => route.params.isbn, (newIsbn) => {
   margin: 2rem auto;
   padding: 0 1rem;
 }
+.loan-yes {
+  color: #2e8b57; /* 초록색: 대출 가능 */
+}
 
+.loan-no {
+  color: #d9534f; /* 빨간색: 대출 불가능 */
+}
 @media (min-width: 992px) {
   .detail-page-container {
     grid-template-columns: minmax(0, 3fr) minmax(0, 1fr);

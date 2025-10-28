@@ -64,7 +64,6 @@ public class LibraryServiceImpl implements  LibraryService{
         if (json == null)
             return List.of();
         try {
-            log.info("캐시성공");
             JavaType t = om.getTypeFactory().constructCollectionType(List.class, BookDto.class);
             return om.readValue(json, t);
         } catch (Exception e) {
@@ -129,7 +128,7 @@ public class LibraryServiceImpl implements  LibraryService{
     public List<NearestLibraryDetail> calculateDistance(LocationDto locationDto) {
 
         Point userLocation = new Point(locationDto.getLongitude(), locationDto.getLatitude());
-        Distance radius = new Distance(10, RedisGeoCommands.DistanceUnit.KILOMETERS);
+        Distance radius = new Distance(5, RedisGeoCommands.DistanceUnit.KILOMETERS);
         Circle area = new Circle(userLocation, radius);
         GeoResults<RedisGeoCommands.GeoLocation<String>> results =
                 redisTemplate.opsForGeo().radius(
@@ -139,13 +138,10 @@ public class LibraryServiceImpl implements  LibraryService{
                 );
 
 
-
-
-
         Map<String, Point> coordByLib = results.getContent().stream()
                 .filter(r -> r.getContent().getPoint() != null)   // 좌표 없는 건 제외
                 .collect(Collectors.toMap(
-                        r -> r.getContent().getName(),
+                        r -> String.valueOf(r.getContent().getName()),
                         r -> r.getContent().getPoint()
                 ));
 
@@ -155,6 +151,7 @@ public class LibraryServiceImpl implements  LibraryService{
 
         // 2) 외부 API 병렬 호출 결과 수집
         List<AbstractMap.SimpleEntry<String, BookSearchReseponseDto>> apiResults =
+
                 getCompletableFutureList(locationDto, libraryCodes).join();
 
         // 3) Y/Y 필터 + 거리 계산
@@ -165,28 +162,32 @@ public class LibraryServiceImpl implements  LibraryService{
                 .filter(e -> e.getValue() != null && e.getValue().getResponse() != null)
                 .filter(e -> {
                     var r = e.getValue().getResponse().getResult();
-                    return "Y".equals(r.getHasBook()) && "Y".equals(r.getLoanAvailable());
+                    return "Y".equals(r.getHasBook());
+//                     && "Y".equals(r.getLoanAvailable()
                 })
                 .map(e -> {
                     String lib = e.getKey();
+                    String isLoan= e.getValue().getResponse().getResult().getLoanAvailable();
                     Point p = coordByLib.get(lib);
                     if (p == null) return null;
                     double km = haversine(uLat, uLon, p.getY(), p.getX());
-                    return new NearestLibrary(lib, p.getY(), p.getX(), km);
+                    return new NearestLibrary(lib,isLoan, p.getY(), p.getX(), km);
                 })
                 .filter(Objects::nonNull)
                 .sorted(Comparator.comparingDouble(NearestLibrary::getDistanceKm))
-                .limit(3)
+                .limit(5)
                 .toList();
         List<Integer> libCodes = computed.stream()
                 .map(lib -> Integer.parseInt(lib.getLibCode())) // String → int 파싱
                 .toList();
 
-        log.info("TOP3: {}", computed);
+        log.info("TOP5: {}", computed);
         List<Library> libs = repository.findByLibCodeIn(libCodes);
         Map<String, Library> libMap = libs.stream()
                 .collect(Collectors.toMap(l ->
-                        String.valueOf(l.getLibCode()), Function.identity(), (a, b)->a));
+                        String.valueOf(
+                                l.getLibCode()),
+                                Function.identity(), (a, b)->a));
 
         List<NearestLibraryDetail> result = new ArrayList<>();
         for (NearestLibrary n : computed) {
@@ -195,6 +196,7 @@ public class LibraryServiceImpl implements  LibraryService{
                 result.add(new NearestLibraryDetail(
                         n.getLibCode(),
                         lib.getLibName(),
+                        n.getIsLoan(),
                         lib.getAddress(),
                         lib.getTel(),
                         lib.getLatitude(),

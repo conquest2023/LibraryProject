@@ -11,6 +11,9 @@ import lombok.NoArgsConstructor;
 public class NearestLibrary {
 
    private String libCode;
+
+   private String  isLoan;
+
    private double lat;
    private double lon;
    private double distanceKm;

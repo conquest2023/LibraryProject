@@ -1,0 +1,35 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: library-ingress
+  namespace: library
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # 응답이 느리면 타임아웃 늘리기 (옵션)
+    # nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+    # nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: lib.workly.info
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: library-backend-svc
+                port:
+                  number: 8080
+          # 나머지는 전부 프론트 정적 페이지
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: library-front-svc
+                port:
+                  number: 80
+  tls:
+    - hosts:
+        - lib.workly.info
+      secretName: lib-workly
