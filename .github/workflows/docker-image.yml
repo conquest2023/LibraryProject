@@ -169,3 +169,33 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=registry,ref=${{ env.IMAGE_REPO }}:buildcache
           cache-to: type=registry,ref=${{ env.IMAGE_REPO }}:buildcache,mode=max
+
+  bump-manifest:
+    needs: [frontend, backend]
+    if: ${{ always() && (needs.frontend.result == 'success' || needs.backend.result == 'success') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install yq
+        run: pip install yq -q
+
+      - name: Update Deployment Image
+        run: |
+          # 프론트/백 각각 성공했을 때만 업데이트
+          if [ "${{ needs.frontend.result }}" = "success" ]; then
+            yq -i '.spec.template.spec.containers[0].image = "wngud1/front-library:${{ needs.frontend.outputs.image_tag }}"' cd/front.yml
+          fi
+          if [ "${{ needs.backend.result }}" = "success" ]; then
+            yq -i '.spec.template.spec.containers[0].image = "wngud1/backend-library:${{ needs.backend.outputs.image_tag }}"' cd/backend.yml
+          fi
+
+      - name: Commit & Push
+        run: |
+          git config user.name "gha-bot"
+          git config user.email "[email protected]"
+          git add k8s/library/*.yml
+          git commit -m "chore: bump image tag to latest build"
+          git push

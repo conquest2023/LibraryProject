@@ -20,5 +20,9 @@ public class CacheConfig {
                 .maximumSize(10000)
                 .expireAfterWrite(Duration.ofHours(24)));
         return manager;
+
+
+
+
     }
 }
