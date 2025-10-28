@@ -43,10 +43,6 @@ public class CalculateServiceImpl implements CalculateService{
     private final RestTemplate restTemplate;
 
 
-
-
-
-
     private static final String API_BASE_URL = "http://data4library.kr/api";
 
 
