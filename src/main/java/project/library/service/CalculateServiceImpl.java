@@ -38,7 +38,7 @@ public class CalculateServiceImpl implements CalculateService{
 
     private final RedisTemplate redisTemplate;
 
-    private final LibraryRepository repository;
+//    private final LibraryRepository repository;
 
     private final RestTemplate restTemplate;
 
@@ -50,7 +50,7 @@ public class CalculateServiceImpl implements CalculateService{
 
 
             Point userLocation = new Point(locationDto.getLongitude(), locationDto.getLatitude());
-            Distance radius = new Distance(3, RedisGeoCommands.DistanceUnit.KILOMETERS);
+            Distance radius = new Distance(10, RedisGeoCommands.DistanceUnit.KILOMETERS);
             Circle area = new Circle(userLocation, radius);
             GeoResults<RedisGeoCommands.GeoLocation<String>> results =
                     redisTemplate.opsForGeo().radius(
@@ -60,7 +60,7 @@ public class CalculateServiceImpl implements CalculateService{
                     );
 
             Map<String, Point> coordByLib = results.getContent().stream()
-                    .filter(r -> r.getContent().getPoint() != null)   // 좌표 없는 건 제외
+//                    .filter(r -> r.getContent().getPoint() != null)   // 좌표 없는 건 제외
                     .collect(Collectors.toMap(
                             r -> String.valueOf(r.getContent().getName()),
                             r -> r.getContent().getPoint()
@@ -104,8 +104,12 @@ public class CalculateServiceImpl implements CalculateService{
                     .map(lib -> Integer.parseInt(lib.getLibCode())) // String → int 파싱
                     .toList();
 
+//        List<Library> libs = repository.findByLibCodeIn(libCodes);
             log.info("TOP5: {}", computed);
-            List<Library> libs = repository.findByLibCodeIn(libCodes);
+            List<Library> libs = libCodes.stream()
+                .map(LibraryGeoService.cache::getIfPresent) // 캐시에서 있으면 꺼냄
+                .filter(Objects::nonNull) // null 제거
+                .toList();
             Map<String, Library> libMap = libs.stream()
                     .collect(Collectors.toMap(l ->
                                     String.valueOf(

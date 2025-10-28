@@ -22,7 +22,10 @@ public class DistanceController {
 
     @PostMapping("/location")
     public ResponseEntity<?> receiveLocation(@RequestBody LocationDto locationDto) {
+        long start = System.currentTimeMillis();
         List<NearestLibraryDetail> nearestLibraries = calculateService.calculateDistance(locationDto);
+        long end = System.currentTimeMillis();
+        log.info("resultTime={}",end-start);
         return ResponseEntity.ok(Map.of("nearest",nearestLibraries));
     }
 

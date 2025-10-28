@@ -1,23 +1,34 @@
 package project.library.service;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.geo.Point;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import project.library.repository.LibraryRepository;
 import project.library.repository.collection.Library;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class LibraryGeoService {
 
     private final LibraryRepository repository;
 
-    private final RedisTemplate redisTemplate;
+    private  final RedisTemplate redisTemplate;
+
+    public static final Cache<Integer, Library> cache = Caffeine.newBuilder()
+            .maximumSize(2000)
+            .build();
+//    private final Caff
     public void putGeotRedisLibrary(){
         List<Library> all = repository.findAll();
         for (Library library : all) {
@@ -44,4 +55,20 @@ public class LibraryGeoService {
             redisTemplate.opsForHash().putAll(hashKey, libraryData);
         }
     }
+
+
+    public void putLocalLibrary(){
+        List<Library> all = repository.findAll();
+        for (Library library : all) {
+
+            cache.put(library.getLibCode(),library);
+        }
+        log.info("캐시 warm 성공");
+    }
+
+    @PostConstruct
+    public void initCache() {
+        putLocalLibrary();
+    }
+
 }
