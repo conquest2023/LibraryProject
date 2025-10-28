@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: library-backend
-          image: wngud1/backend-library:main-<sha>
+          image: wngud1/backend-library:wngud1/backend-library:main-517d7c89668484d075fd3593936ebed4ee631f10
           ports:
             - containerPort: 8080
           env:
