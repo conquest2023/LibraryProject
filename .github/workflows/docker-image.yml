@@ -186,10 +186,10 @@ jobs:
         run: |
           # 프론트/백 각각 성공했을 때만 업데이트
           if [ "${{ needs.frontend.result }}" = "success" ]; then
-            yq -i '.spec.template.spec.containers[0].image = "wngud1/front-library:${{ needs.frontend.outputs.image_tag }}"' cd/front.yml
+            yq -i '.spec.template.spec.containers[0].image = "wngud1/front-library:${{ needs.frontend.outputs.image_tag }}"' cd/front.yaml
           fi
           if [ "${{ needs.backend.result }}" = "success" ]; then
-            yq -i '.spec.template.spec.containers[0].image = "wngud1/backend-library:${{ needs.backend.outputs.image_tag }}"' cd/backend.yml
+            yq -i '.spec.template.spec.containers[0].image = "wngud1/backend-library:${{ needs.backend.outputs.image_tag }}"' cd/backend.yaml
           fi
 
       - name: Commit & Push
