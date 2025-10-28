@@ -1,4 +1,3 @@
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -16,7 +15,7 @@ spec:
     spec:
       containers:
         - name: library-front
-          image: wngud1/front-library:0.0.5
+          image: wngud1/front-library:main-<sha>
           ports:
             - containerPort: 80
           imagePullPolicy: Always
