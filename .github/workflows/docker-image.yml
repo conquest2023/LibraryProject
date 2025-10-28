@@ -6,20 +6,32 @@ on:
     branches: [ main ]
 
 jobs:
-  # 1) 변경 경로 감지
   changes:
     runs-on: ubuntu-latest
     outputs:
       frontend: ${{ steps.filter.outputs.frontend }}
       backend:  ${{ steps.filter.outputs.backend }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout full history
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 0                  # 히스토리 확보 (중요)
-      - uses: dorny/paths-filter@v3
+          fetch-depth: 0  # ← HEAD~1, merge-base 쓰려면 히스토리 필요
+
+      # (선택) 기본 브랜치가 main이 맞는지 확인하고 가져오기
+      - name: Ensure base branch is fetched
+        run: |
+          git fetch --no-tags --prune origin +refs/heads/*:refs/remotes/origin/*
+
+      - name: Detect changes
         id: filter
+        uses: dorny/paths-filter@v3
         with:
-          base: ${{ github.event.pull_request.base.sha || 'HEAD~1' }}
+          # 이벤트 별로 '비교 기준'을 안전하게 지정
+          # PR이면 base SHA와 head SHA, push면 before SHA와 현재 SHA
+          base: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before || 'origin/main' }}
+          ref:  ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          # ↑ github.event.before 가 비어있는(첫 커밋 등) 경우 'origin/main'로 폴백
+
           filters: |
             frontend:
               - 'frontend/**'
