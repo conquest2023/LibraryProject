@@ -15,23 +15,19 @@ spec:
     spec:
       containers:
         - name: library-backend
-          image: wngud1/backend-library:main-517d7c89668484d075fd3593936ebed4ee631f10
+          image: wngud1/backend-library:wngud1-backend-library-main-20151224087cbdbbdb449c14638c90c679ee58f8
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
           env:
             - name: TZ
               value: Asia/Seoul
-
             - name: SPRING_DATA_MONGODB_URI
               valueFrom:
                 secretKeyRef:
                   name: mongodb-secret
                   key: SPRING_DATA_MONGODB_URI
-
             - name: SPRING_DATA_REDIS_HOST
               value: redis-service.library.svc.cluster.local
             - name: SPRING_DATA_REDIS_PORT
-              value: "6379"
-
-
+              value: '6379'
