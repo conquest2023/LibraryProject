@@ -43,10 +43,12 @@
           <div class="feature-icon">
             <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><path fill="currentColor" d="M5.5 22q-.65 0-1.075-.425T4 20.5q0-.65.425-1.075T5.5 19q.65 0 1.075.425T7 20.5q0 .65-.425 1.075T5.5 22m13 0q-.65 0-1.075-.425T17 20.5q0-.65.425-1.075T18.5 19q.65 0 1.075.425T20 20.5q0 .65-.425 1.075T18.5 22M4.45 17L3 4h18l-1.6 11.2q-.125.875-.825 1.488T17 17zM17 15q.275 0 .475-.113t.3-.337L19 6H5l1.55 9zM3 2h2.2l1.6 11.2q.05.3.263.5t.487.2h8.9q.275 0 .475-.113t.3-.337L19 4h2l-3 13H8.1L7 16l-4-9H1V2z"/></svg>
           </div>
+
           <h3>3. 방문 대출</h3>
           <p>도서관에 방문하여<br>책을 바로 대출하세요.</p>
         </div>
       </section>
+
 
 
 <!--      <section class="container content-section new-arrivals">-->
