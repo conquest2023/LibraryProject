@@ -48,29 +48,29 @@
         </div>
       </section>
 
-      <section class="container content-section new-arrivals">
-        <div class="section-header">
-          <h2>오늘 들어온 신간 도서</h2>
-          <p>가장 먼저 만나보는 따끈따끈한 새 책들입니다.</p>
-        </div>
-        <BookList
-            :books="newBooks"
-            :is-loading="isNewBooksLoading"
-            status-message=""
-        />
-      </section>
+<!--      <section class="container content-section new-arrivals">-->
+<!--        <div class="section-header">-->
+<!--          <h2>오늘 들어온 신간 도서</h2>-->
+<!--          <p>가장 먼저 만나보는 따끈따끈한 새 책들입니다.</p>-->
+<!--        </div>-->
+<!--        <BookList-->
+<!--            :books="newBooks"-->
+<!--            :is-loading="isNewBooksLoading"-->
+<!--            status-message=""-->
+<!--        />-->
+<!--      </section>-->
 
-      <section class="container content-section">
-        <div class="section-header">
-          <h2>요즘 주목받는 도서</h2>
-          <p>전국 도서관에서 가장 많이 찾고 있는 책들을 만나보세요.</p>
-        </div>
-        <BookList
-            :books="popularBooks"
-            :is-loading="isPopularLoading"
-            status-message=""
-        />
-      </section>
+<!--      <section class="container content-section">-->
+<!--        <div class="section-header">-->
+<!--          <h2>요즘 주목받는 도서</h2>-->
+<!--          <p>전국 도서관에서 가장 많이 찾고 있는 책들을 만나보세요.</p>-->
+<!--        </div>-->
+<!--        <BookList-->
+<!--            :books="popularBooks"-->
+<!--            :is-loading="isPopularLoading"-->
+<!--            status-message=""-->
+<!--        />-->
+<!--      </section>-->
     </div>
   </main>
 </template>
