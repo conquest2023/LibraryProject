@@ -1,4 +1,3 @@
-
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -16,10 +15,10 @@ spec:
     spec:
       containers:
         - name: library-backend
-          image: wngud1/backend-library:0.0.5
+          image: wngud1/backend-library:main-<sha>
           ports:
             - containerPort: 8080
           env:
             - name: TZ
-              value: "Asia/Seoul"
-          imagePullPolicy:  Always
+              value: Asia/Seoul
+          imagePullPolicy: Always
