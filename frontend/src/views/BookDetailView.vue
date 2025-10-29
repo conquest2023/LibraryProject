@@ -92,7 +92,7 @@
         <p v-if="book.description" class="description-text">{{ book.description }}</p>
         <p v-else class="no-content">제공되는 책 소개가 없습니다.</p>
       </section>
-
+      <BookToc :book-name="book.title" />
       <section class="book-section">
         <h2>상세 정보</h2>
 
@@ -134,6 +134,7 @@ import { ref, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import RelatedBooks from '@/components/RelatedBooks.vue';
 import LibraryMapModal from '@/components/LibraryMapModal.vue';
+import BookToc from "@/components/BookToc.vue";
 
 const route = useRoute();
 const router = useRouter();
@@ -143,7 +144,6 @@ const isLoading = ref(true);
 const error = ref(null);
 const fallbackImage = 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22220%22 height=%22308%22 fill=%22%23e9ecef%22><rect width=%22100%25%22 height=%22100%25%22/><text x=%2250%25%22 y=%2250%25%22 font-family=%22sans-serif%22 font-size=%2224%22 fill=%22%23adb5bd%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22>표지 없음</text></svg>';
 
-// --- 모달 및 도서관 검색 관련 상태 변수 ---
 const isMapModalVisible = ref(false);
 const isSearchingLibs = ref(false);
 const nearbyLibraries = ref([]);
@@ -161,7 +161,6 @@ const findNearbyLibraries = () => {
     searchError.value = '이 브라우저에서는 위치 정보를 지원하지 않습니다.';
     return;
   }
-
   isSearchingLibs.value = true;
   searchError.value = '';
   searchedAndNoResult.value = false;

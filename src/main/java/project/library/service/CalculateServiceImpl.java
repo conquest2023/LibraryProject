@@ -1,5 +1,6 @@
 package project.library.service;
 
+import io.github.resilience4j.retry.annotation.Retry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -108,7 +109,7 @@ public class CalculateServiceImpl implements CalculateService{
             log.info("TOP5: {}", computed);
             List<Library> libs = libCodes.stream()
                 .map(LibraryGeoService.cache::getIfPresent) // 캐시에서 있으면 꺼냄
-                .filter(Objects::nonNull) // null 제거
+                .filter(Objects::nonNull)
                 .toList();
             Map<String, Library> libMap = libs.stream()
                     .collect(Collectors.toMap(l ->
@@ -157,7 +158,6 @@ public class CalculateServiceImpl implements CalculateService{
                             .filter(Objects::nonNull)
                             .toList());
         }
-
         private AbstractMap.SimpleEntry<String, BookSearchReseponseDto> callBookExist (String libCode, String isbn){
             URI uri = UriComponentsBuilder.fromUriString(API_BASE_URL)
                     .pathSegment("bookExist")
