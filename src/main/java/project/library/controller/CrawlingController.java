@@ -4,6 +4,7 @@ package project.library.controller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import project.library.service.CrawlingService;
@@ -13,6 +14,7 @@ import java.util.Map;
 import java.util.Set;
 
 @RestController
+@RequestMapping("/api")
 @RequiredArgsConstructor
 public class CrawlingController {
 
