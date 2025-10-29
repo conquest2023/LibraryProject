@@ -96,6 +96,8 @@
       <section class="book-section">
         <h2>상세 정보</h2>
 
+
+
         <dl class="detail-list">
           <div class="detail-item"><dt>저자</dt><dd>{{ book.authors || '-' }}</dd></div>
           <div class="detail-item"><dt>출판사</dt><dd>{{ book.publisher || '-' }}</dd></div>
