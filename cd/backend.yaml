@@ -27,7 +27,7 @@ spec:
                 secretKeyRef:
                   name: mongodb-secret
                   key: SPRING_DATA_MONGODB_URI
-#            - name: SPRING_DATA_REDIS_HOST
-#              value: redis-service.default.svc.cluster.local
-#            - name: SPRING_DATA_REDIS_PORT
-#              value: '6379'
+            - name: SPRING_DATA_REDIS_HOST
+              value: redis-service.default.svc.cluster.local
+            - name: SPRING_DATA_REDIS_PORT
+              value: '6379'
