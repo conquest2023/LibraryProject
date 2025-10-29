@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: library-front
-          image: wngud1/front-library:wngud1-front-library-main-b185099f60157497323d3004161cd3aeab45e6a5
+          image: wngud1/front-library:wngud1-front-library-main-94a8a93251ccb876072ebc78f66d48ef0d0a7e28
           ports:
             - containerPort: 80
           imagePullPolicy: Always
