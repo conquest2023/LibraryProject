@@ -92,7 +92,7 @@
         <p v-if="book.description" class="description-text">{{ book.description }}</p>
         <p v-else class="no-content">제공되는 책 소개가 없습니다.</p>
       </section>
-      <BookToc :book-name="book.title" />
+      <BookToc :book-name="book.bookname" />
       <section class="book-section">
         <h2>상세 정보</h2>
 
@@ -181,7 +181,6 @@ const findNearbyLibraries = () => {
 
           const data = await res.json();
           const libs = Array.isArray(data.nearest) ? data.nearest : [];
-          console.log(libs)
           // 거리순으로 정렬
           libs.sort((a, b) => a.distanceKm - b.distanceKm);
           nearbyLibraries.value = libs;
@@ -209,8 +208,10 @@ const findNearbyLibraries = () => {
 const fetchBookDetail = async (isbn) => {
   try {
     const res = await fetch(`/api/detail/book?isbn=${isbn}`);
-    if (!res.ok) throw new Error('책 상세 정보 불러오기 실패');
+    if (!res.ok)
+      throw new Error('책 상세 정보 불러오기 실패');
     book.value = await res.json();
+
   } catch (err) {
     error.value = "책 상세 정보를 불러오지 못했습니다.";
     book.value = null;

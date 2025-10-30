@@ -58,9 +58,9 @@ function normalizeLine(line) {
 async function fetchToc() {
   loading.value = true
   try {
-    const res = await fetch(`${props.endpoint}?bookName=${encodeURIComponent(props.bookName)}`)
+    const res = await fetch(`/api/crawling?bookName=${encodeURIComponent(props.bookName)}`)
+
     const json = await res.json()
-    // 백엔드가 Set<String>을 "result": ["...", "..."] 형식으로 내려온다고 가정
     const lines = Array.isArray(json.result) ? json.result : []
 
     // 혹시 한 줄에 전부 붙어온 케이스 → 강제 분할(챕터 시작 패턴으로 split)

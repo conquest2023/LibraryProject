@@ -28,7 +28,6 @@ public class CrawlingServiceImpl implements CrawlingService {
         if (!linkElements.isEmpty()) {
             // 첫 번째 책의 링크를 추출
             String detailUrl = linkElements.first().attr("href");
-            log.info("추출된 상세 페이지 URL: " + detailUrl);
             result=extractContent(detailUrl);
             return result;
         }
@@ -46,6 +45,7 @@ public class CrawlingServiceImpl implements CrawlingService {
                 .timeout(15000)
                 .get();
 
+
         // 2) 여러 셀렉터로 목차 후보 탐색 (페이지 유형별 대응)
         String[] selectors = new String[] {
                 "ul.book_contents_list li.book_contents_item",
@@ -59,7 +59,8 @@ public class CrawlingServiceImpl implements CrawlingService {
             if (!items.isEmpty()) {
                 for (Element li : items) {
                     String line = normalize(li.text());
-                    if (!line.isBlank()) result.add(line);
+                    if (!line.isBlank())
+                        result.add(line);
                 }
             }
         }
