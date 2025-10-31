@@ -34,7 +34,6 @@ public class RedisConfig {
         StringRedisSerializer stringSer = new StringRedisSerializer();
         template.setKeySerializer(stringSer);
         template.setHashKeySerializer(stringSer);
-
         // ── value 쪽 직렬화기 : Jackson ➜ LZ4 래핑 ──────
         RedisSerializer<Object> jsonSer = new GenericJackson2JsonRedisSerializer();
 //        RedisSerializer<Object> lz4Ser  = new Lz4RedisSerializer<>(jsonSer);

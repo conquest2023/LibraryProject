@@ -1,4 +1,4 @@
-package project.library.service;
+package project.library.service.domain;
 
 import org.springframework.data.geo.Circle;
 import org.springframework.data.geo.GeoResults;
@@ -13,7 +13,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-
 @Service
 public class LibraryFinder {
 
@@ -23,7 +22,7 @@ public class LibraryFinder {
         this.redisTemplate = redisTemplate;
     }
 
-    public Map<String,Point> findNearby(UserLocation location, double radiusKm) {
+    public Map<String ,Point> findNearby(UserLocation location, double radiusKm) {
         Circle area =location.toCircle(radiusKm);
         GeoResults<RedisGeoCommands.GeoLocation<String>> results =
                 redisTemplate.opsForGeo().radius(
@@ -40,4 +39,5 @@ public class LibraryFinder {
                 ));
 
     }
+
 }

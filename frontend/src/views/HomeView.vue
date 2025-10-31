@@ -10,6 +10,15 @@
           Book Voyager에서 원하는 책을 검색하고, 지금 바로 대출 가능한 도서관을 확인하세요.
         </p>
         <SearchForm @search="handleSearch" class="hero-search-form" />
+        <div v-if="recentBooks.length" class="recent-history">
+          <h3>📚 최근 검색한 책</h3>
+          <ul class="recent-list">
+            <li v-for="book in recentBooks" :key="book" @click="handleSearch(book)">
+              {{ book }}
+            </li>
+          </ul>
+        </div>
+        <p v-else class="recent-empty">{{ recentMessage }}</p>
       </div>
     </section>
 
@@ -104,6 +113,28 @@ const isNewBooksLoading = ref(true);
 // 인기 도서 관련 상태
 const popularBooks = ref([]);
 const isPopularLoading = ref(true);
+const recentBooks = ref([]);
+const recentMessage = ref('');
+
+// 📚 최근 검색한 책 가져오기
+const fetchHistory = async () => {
+  try {
+    const res = await fetch('/api/history');
+    if (!res.ok) throw new Error('히스토리를 불러올 수 없습니다.');
+    const data = await res.json();
+
+    if (Array.isArray(data.books)) {
+      recentBooks.value = data.books;
+      recentMessage.value = '';
+    } else {
+      recentBooks.value = [];
+      recentMessage.value = data.books; // "최근 검색하신 책이 없습니다"
+    }
+  } catch (error) {
+    console.error(error);
+    recentMessage.value = '최근 검색 기록을 가져오는 중 오류가 발생했습니다.';
+  }
+};
 
 // 책 검색 함수
 const doSearch = async (keyword) => {
@@ -169,12 +200,52 @@ onMounted(() => {
     // 검색어가 없을 때, 신간 도서와 인기 도서를 모두 불러옵니다.
     fetchNewBooks();
     fetchPopularBooks();
+    fetchHistory();
+
   }
 });
 </script>
 
 <style scoped>
 /* Hero Section */
+.recent-history {
+  margin-top: 2rem;
+  text-align: center;
+}
+
+.recent-history h3 {
+  font-weight: 700;
+  color: var(--text-color);
+  margin-bottom: 0.8rem;
+}
+
+.recent-list {
+  display: flex;
+  justify-content: center;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+  list-style: none;
+  padding: 0;
+}
+
+.recent-list li {
+  background-color: #eef1f5;
+  border-radius: 20px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.recent-list li:hover {
+  background-color: var(--primary-color);
+  color: #fff;
+}
+
+.recent-empty {
+  margin-top: 1rem;
+  color: var(--text-color-secondary);
+  font-size: 0.95rem;
+}
 .hero-section {
   background-color: var(--card-background);
   padding: 5rem 1.5rem; /* 👈 현재 이 값 때문에 수직으로 많은 공간을 차지합니다 */

@@ -1,4 +1,4 @@
-package project.library.service;
+package project.library.service.domain;
 
 import org.springframework.data.geo.Point;
 import project.library.controller.dto.book.NearestLibrary;

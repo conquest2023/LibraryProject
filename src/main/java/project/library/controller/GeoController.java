@@ -3,9 +3,8 @@ package project.library.controller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import project.library.service.LibraryGeoService;
+import project.library.service.domain.LibraryGeoService;
 
 import java.util.Map;
 import java.util.Optional;

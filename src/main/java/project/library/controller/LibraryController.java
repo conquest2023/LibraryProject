@@ -1,6 +1,7 @@
 package project.library.controller;
 
 
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
@@ -13,12 +14,11 @@ import project.library.controller.dto.book.BookDto;
 import project.library.controller.dto.book.LibraryResponseDto;
 import project.library.controller.dto.book.search.BookSearchReseponseDto;
 import project.library.service.DailyBookCacheService;
-import project.library.service.LibraryGeoService;
+import project.library.service.LibraryService;
 
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 
 @Slf4j
@@ -28,7 +28,10 @@ import java.util.Optional;
 public class LibraryController {
 
 
-    private final DailyBookCacheService libraryService;
+    private final DailyBookCacheService cacheService;
+
+
+    private final LibraryService libraryService;
 
     private final RestTemplate restTemplate;
 
@@ -45,48 +48,38 @@ public class LibraryController {
     @GetMapping("/increase")
     @ResponseBody
     public  ResponseEntity<?> getIncreaseBook(){
-        List<BookDto> increaseBook = libraryService.getLatestDailyBooks();
+        List<BookDto> increaseBook = cacheService.getLatestDailyBooks();
 
         return ResponseEntity.ok(Map.of("books",increaseBook));
     }
 
     @GetMapping("/search/book")
     @ResponseBody
-    public ResponseEntity<?> getIsbn(@RequestParam(required = false) String title){
-        URI uri = UriComponentsBuilder
-                .fromUriString(API_BASE_URL)
-                .pathSegment("srchBooks")
-                .queryParam("authKey", AUTH_KEY)
-                .queryParam("title", title.replaceAll("\\s+", "")) // 입력받은 검색어
-                .queryParam("sort","pubYear")
-                .queryParam("pageNo", 1)
-                .queryParam("pageSize", 40)
-                .queryParam("format", "json")
-                .encode() // URL에 포함될 수 없는 문자를 인코딩
-                .build()
-                .toUri();
-        HttpHeaders headers = new HttpHeaders();
-        headers.setAccept(List.of(MediaType.ALL));
-        HttpEntity<String> entity = new HttpEntity<>(headers);
+    public ResponseEntity<?> getIsbn(
+            @RequestParam(required = false) String title,
+            HttpSession session) {
 
-        ResponseEntity<BookSearchReseponseDto> responseEntity =
-                restTemplate.exchange(uri, HttpMethod.GET, entity, BookSearchReseponseDto.class);
-
-        // 2. DTO 객체로 깔끔하게 데이터 받기
-        BookSearchReseponseDto searchResponse = responseEntity.getBody();
-
-
-        List<BookDetailDto> docWrappers = searchResponse.getResponse().getDocs();
-
-
-
-        // Java Stream을 사용해 더 간결하게 책 목록만 추출
-        List<BookDto> books = docWrappers.stream()
-                    .map(BookDetailDto::getDoc)
-                    .toList();
+        List<BookDto> books = libraryService.searchBook(session.getId(),title);
 
         return ResponseEntity.ok(Map.of("books", books));
     }
+
+    @GetMapping("/history")
+    @ResponseBody
+    public ResponseEntity<?> getHistory(
+            HttpSession session) {
+
+        List<String> books = libraryService.getHistoryBook(session.getId());
+
+        if(!books.isEmpty()){
+            return ResponseEntity.ok(Map.of("books", books));
+
+        }
+
+        return ResponseEntity.ok(Map.of("books","최근 검색하신 책이 없습니다"));
+
+    }
+
 
     @GetMapping("/detail/book")
     @ResponseBody
@@ -162,36 +155,9 @@ public class LibraryController {
         return ResponseEntity.ok(Map.of("books",books));
 
     }
-
-
-
-    @GetMapping("/search/library")
-    @ResponseBody
-    public ResponseEntity<?> getLibrary(@RequestParam String isbn,
-                                        @RequestParam String region){
-
-        URI uri = UriComponentsBuilder
-                .fromUriString(API_BASE_URL)
-                .pathSegment("libSrchByBook")
-                .queryParam("authKey", AUTH_KEY)
-                .queryParam("isbn", isbn) // 입력받은 검색어
-                .queryParam("region",region)
-                .queryParam("pageNo", 1)
-                .queryParam("pageSize", 50)
-                .queryParam("format", "json") // 응답 형식을 JSON으로 지정
-                .encode()
-                .build()
-                .toUri();
-
-        ResponseEntity<String> responseEntity = restTemplate.getForEntity(uri, String.class);
-
-        return responseEntity;
-
-    }
-
     @GetMapping("/check/book")
     public ResponseEntity<?> loanCheckBook(@RequestParam String isbn,
-                                            @RequestParam String libCode) {
+                                           @RequestParam String libCode) {
 
         URI uri = UriComponentsBuilder
                 .fromUriString(API_BASE_URL)
@@ -209,6 +175,33 @@ public class LibraryController {
         return responseEntity;
     }
 
+
+
+
+
+//    @GetMapping("/search/library")
+//    @ResponseBody
+//    public ResponseEntity<?> getLibrary(@RequestParam String isbn,
+//                                        @RequestParam String region){
+//
+//        URI uri = UriComponentsBuilder
+//                .fromUriString(API_BASE_URL)
+//                .pathSegment("libSrchByBook")
+//                .queryParam("authKey", AUTH_KEY)
+//                .queryParam("isbn", isbn) // 입력받은 검색어
+//                .queryParam("region",region)
+//                .queryParam("pageNo", 1)
+//                .queryParam("pageSize", 50)
+//                .queryParam("format", "json") // 응답 형식을 JSON으로 지정
+//                .encode()
+//                .build()
+//                .toUri();
+//
+//        ResponseEntity<String> responseEntity = restTemplate.getForEntity(uri, String.class);
+//
+//        return responseEntity;
+//
+//    }
 
 
 }

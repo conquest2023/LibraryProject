@@ -1,4 +1,4 @@
-package project.library.service;
+package project.library.repository;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

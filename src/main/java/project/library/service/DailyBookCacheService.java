@@ -24,7 +24,7 @@ import java.util.*;
 @Service
 @Slf4j
 @RequiredArgsConstructor
-public class DailyBookCacheService implements  LibraryService{
+public class DailyBookCacheService {
 
 
     private final RedisTemplate redisTemplate;
