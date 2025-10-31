@@ -8,10 +8,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.geo.Point;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
-import project.library.repository.LibraryRepository;
+import project.library.repository.LibraryJpaRepository;
 import project.library.repository.collection.Library;
 
-import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,7 +20,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class LibraryGeoService {
 
-    private final LibraryRepository repository;
+    private final LibraryJpaRepository repository;
 
     private  final RedisTemplate redisTemplate;
 

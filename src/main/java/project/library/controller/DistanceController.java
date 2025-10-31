@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import project.library.controller.dto.LocationDto;
+import project.library.controller.dto.UserLocation;
 import project.library.service.CalculateService;
 import project.library.service.NearestLibraryDetail;
 
@@ -21,9 +21,9 @@ public class DistanceController {
     private final CalculateService calculateService;
 
     @PostMapping("/location")
-    public ResponseEntity<?> receiveLocation(@RequestBody LocationDto locationDto) {
+    public ResponseEntity<?> receiveLocation(@RequestBody UserLocation locationDto) {
         long start = System.currentTimeMillis();
-        List<NearestLibraryDetail> nearestLibraries = calculateService.calculateDistance(locationDto);
+        List<NearestLibraryDetail> nearestLibraries = calculateService.findNearbyLibrary(locationDto);
         long end = System.currentTimeMillis();
         log.info("resultTime={}",end-start);
         return ResponseEntity.ok(Map.of("nearest",nearestLibraries));

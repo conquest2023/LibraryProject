@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.geo.Point;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
@@ -15,8 +14,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 import project.library.controller.dto.book.BookDetailDto;
 import project.library.controller.dto.book.BookDto;
 import project.library.controller.dto.book.search.BookSearchReseponseDto;
-import project.library.repository.LibraryRepository;
-import project.library.repository.collection.Library;
+
 import java.net.URI;
 import java.time.Duration;
 import java.time.LocalDate;
