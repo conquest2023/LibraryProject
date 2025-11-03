@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: library-backend
-          image: wngud1/backend-library:wngud1-backend-library-main-6cab4b0ac66635914beca9c6dd0af8567789c81c
+          image: wngud1/backend-library:wngud1-backend-library-main-fea9a6541c64e0bde12cef9f5cc84914b4624768
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
