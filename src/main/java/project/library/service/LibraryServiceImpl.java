@@ -169,10 +169,19 @@ public class LibraryServiceImpl implements LibraryService {
     }
 
     private static List<Library> checkLibCodes(List<Integer> libCodes) {
-        return libCodes.stream()
-            .map(LibraryGeoService.cache::getIfPresent) // 캐시에서 있으면 꺼냄
-            .filter(Objects::nonNull)
-            .toList();
+        Map<Integer, Library> results = LibraryGeoService.cache.getAllPresent(libCodes);
+
+        // 2. Map에서 List를 추출하고, 요청된 순서대로 결과 리스트를 생성
+        List<Library> out = new ArrayList<>();
+        for (Integer code : libCodes) {
+            // 캐시에 없는 경우 null이 추가되지만, filter로 제거될 것입니다.
+            out.add(results.get(code));
+        }
+
+        // 3. null 제거 후 반환 (선택 사항)
+        return out.stream()
+                .filter(Objects::nonNull)
+                .toList();
     }
 
     public List<Library> checkRedisLibCodes(List<Integer> libCodes) {
@@ -216,17 +225,5 @@ public class LibraryServiceImpl implements LibraryService {
         log.info("Mapped Libraries: {}", result);
         return result;
     }
-
-    /** 해시 직렬화기에 맞춰 byte[] → String 복원 (JDK/JSON/String 모두 대응) */
-    private String safeDeserializeToString(RedisSerializer<Object> serializer, byte[] bytes) {
-        if (bytes == null) return null;
-        if (serializer == null) {
-            // 혹시라도 serializer가 null이면 UTF-8로 시도
-            return new String(bytes, StandardCharsets.UTF_8);
-        }
-        Object obj = serializer.deserialize(bytes);
-        return (obj == null) ? null : obj.toString();
-    }
-
 
 }
