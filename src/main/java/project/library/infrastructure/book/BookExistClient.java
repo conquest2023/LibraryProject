@@ -9,6 +9,7 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 import project.library.controller.dto.UserLocation;
 import project.library.controller.dto.book.search.BookSearchReseponseDto;
+import project.library.monitor.ApiMonitor;
 
 import java.net.URI;
 import java.util.AbstractMap;
@@ -23,7 +24,8 @@ import java.util.concurrent.Executor;
 @RequiredArgsConstructor
 public class BookExistClient {
 
-
+    private final ApiMonitor apiMonitor;
+    private static final String API_NAME = "Book_Exist_Check_API";
     @Qualifier("externalApiTaskExecutor")
     private final Executor externalApiTaskExecutor;
 
@@ -41,10 +43,12 @@ public class BookExistClient {
         List<CompletableFuture<AbstractMap.SimpleEntry<String, BookSearchReseponseDto>>> futures =
                 libraryCodes.stream()
                         .map(libCode -> CompletableFuture
-                                .supplyAsync(() -> callBookExist(libCode, location.getIsbn()), externalApiTaskExecutor)
+                                .supplyAsync(() ->
+                                        callBookExist(libCode, location.getIsbn()), externalApiTaskExecutor)
                                 .completeOnTimeout(null, 3, java.util.concurrent.TimeUnit.SECONDS)
                                 .exceptionally(ex -> {
                                     log.warn("API 실패: {}", libCode, ex);
+                                    apiMonitor.incrementCallCount(API_NAME, "failure");
                                     return null;
                                 })
                         ).toList();
@@ -58,6 +62,7 @@ public class BookExistClient {
     }
 
     public AbstractMap.SimpleEntry<String, BookSearchReseponseDto> callBookExist(String libCode, String isbn){
+        apiMonitor.incrementCallCount(API_NAME, "success");
         URI uri = UriComponentsBuilder.fromUriString(API_BASE_URL)
                 .pathSegment("bookExist")
                 .queryParam("authKey", AUTH_KEY)
