@@ -105,7 +105,7 @@ public class LibraryServiceImpl implements LibraryService {
     public List<NearestLibraryDetail> findTestNearbyLibrary(UserLocation userLocation) {
 
 
-        Map<String, Point> nearby = finder.findNearby(userLocation, 3);
+        Map<String, Point> nearby = finder.findNearby(userLocation, 10);
 
         List<String> libraryCodes = new ArrayList<>(nearby.keySet());
 
