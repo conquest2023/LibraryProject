@@ -48,6 +48,8 @@ public class LibraryGeoService {
             libraryData.put("libName", library.getLibName());
             libraryData.put("address", library.getAddress());
             libraryData.put("tel", library.getTel());
+            libraryData.put("latitude", String.valueOf(library.getLatitude()));
+            libraryData.put("longitude", String.valueOf(library.getLongitude()));
             libraryData.put("homepage", library.getHomepage());
             libraryData.put("closed",library.getClosed());
 //            libraryData.put("libCode",String.valueOf(library.getLibCode()));

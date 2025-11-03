@@ -1,5 +1,6 @@
 package project.library.repository.collection;
 
+import lombok.Builder;
 import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -43,4 +44,16 @@ public class Library {
 
     @Field("BookCount")
     private Integer bookCount;
+
+
+    public Library(int libCode, String address,String libName, String closed,Double latitude,Double longitude ,String tel,String homepage) {
+        this.libCode=libCode;
+        this.address = address;
+        this.libName = libName;
+        this.closed = closed;
+        this.latitude=latitude;
+        this.longitude=longitude;
+        this.tel= tel;
+        this.homepage=homepage;
+    }
 }

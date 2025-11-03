@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
+import project.library.service.LibraryService;
 import project.library.service.domain.LibraryGeoService;
 
 import java.util.Map;
@@ -25,11 +26,14 @@ public class GeoController {
     }
 
 
-    @GetMapping("/put")
-    public ResponseEntity<?> putLibrary(){
+
+    @GetMapping("/put/redis")
+    public ResponseEntity<?> putRedisLibrary(){
 
         libraryGeoService.putRedisLibrary();
 
         return ResponseEntity.of(Optional.of(Map.of("library", "OK")));
     }
+
+
 }
