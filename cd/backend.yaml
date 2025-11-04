@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: library-backend
-          image: wngud1/backend-library:wngud1-backend-library-main-555551c141229dd78662e31e072212e32100252c
+          image: wngud1/backend-library:wngud1-backend-library-main-3931b228e083e912025c0509fc73223d1dc67a36
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
@@ -34,5 +34,3 @@ spec:
           envFrom:
             - secretRef:
                 name: spring-config
-
-
