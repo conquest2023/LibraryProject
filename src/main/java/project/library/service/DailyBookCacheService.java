@@ -33,7 +33,6 @@ public class DailyBookCacheService {
 
 
     private final ObjectMapper om;
-    private  static final  String  REDIS_GEOKEY="libraries:locations";
 
     private static final String API_BASE_URL = "http://data4library.kr/api";
 
