@@ -7,7 +7,7 @@
           찾고 있던 그 책,<br>가장 가까운 도서관을 알려드려요.
         </h1>
         <p class="hero-subtitle">
-          Book Voyager에서 원하는 책을 검색하고, 지금 바로 대출 가능한 도서관을 확인하세요.
+          Book Radar에서 원하는 책을 검색하고, 지금 바로 대출 가능한 도서관을 확인하세요.
         </p>
         <SearchForm @search="handleSearch" class="hero-search-form" />
         <div v-if="recentBooks.length" class="recent-history">
