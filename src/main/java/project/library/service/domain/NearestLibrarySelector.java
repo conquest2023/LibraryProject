@@ -24,8 +24,8 @@ public class NearestLibrarySelector {
                     String libCode = e.getKey();
                     var resp = e.getValue().getResponse().getResult();
                     var p = nearby.get(libCode);
-                    if (p == null) return null;
-
+                    if (p == null)
+                        return null;
                     double km = GeoDistance.haversine(userLat, userLon, p.getY(), p.getX());
                     String isLoan = resp.getLoanAvailable();
                     return new NearestLibrary(libCode, isLoan, p.getY(), p.getX(), km);

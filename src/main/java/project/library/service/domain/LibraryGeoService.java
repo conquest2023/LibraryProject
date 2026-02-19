@@ -61,7 +61,6 @@ public class LibraryGeoService {
     public void putLocalLibrary(){
         List<Library> all = repository.findAll();
         for (Library library : all) {
-
             cache.put(library.getLibCode(),library);
         }
         log.info("캐시 warm 성공");

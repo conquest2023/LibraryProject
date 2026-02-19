@@ -10,7 +10,6 @@ public interface LibraryService {
 
     List<NearestLibraryDetail> findNearbyLibrary(UserLocation locationDto);
 
-    List<NearestLibraryDetail> findTestNearbyLibrary(UserLocation userLocation);
 
     List<BookDto> searchBook(String sessionId,String title);
 

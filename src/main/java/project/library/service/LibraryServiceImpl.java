@@ -2,13 +2,12 @@ package project.library.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.geo.Point;
 import org.springframework.data.redis.core.*;
-import org.springframework.data.redis.serializer.JdkSerializationRedisSerializer;
-import org.springframework.data.redis.serializer.RedisSerializer;
 import org.springframework.stereotype.Service;
 import project.library.controller.dto.UserLocation;
 import project.library.controller.dto.book.BookDto;
@@ -23,7 +22,6 @@ import project.library.service.domain.LibraryFinder;
 import project.library.service.domain.LibraryGeoService;
 import project.library.service.domain.NearestLibrarySelector;
 
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -48,6 +46,7 @@ public class LibraryServiceImpl implements LibraryService {
     private final BookSearchClient searchClient;
 
     @Override
+    @CircuitBreaker(name = "bookSearchService", fallbackMethod = "fallbackNearbyLibrary")
     public List<NearestLibraryDetail> findNearbyLibrary(UserLocation userLocation) {
 
 
@@ -65,8 +64,11 @@ public class LibraryServiceImpl implements LibraryService {
             double uLat = userLocation.getLatitude();
             double uLon = userLocation.getLongitude();
 
-            List<NearestLibrary> computed = new NearestLibrarySelector()
+            List<NearestLibrary> computed =
+                     new NearestLibrarySelector()
                     .selectTopN(uLat, uLon, nearby, apiResults, 5);
+
+
             List<Integer> libCodes = computed.stream()
                     .map(lib -> Integer.parseInt(lib.getLibCode())) // String → int 파싱
                     .toList();
@@ -79,8 +81,7 @@ public class LibraryServiceImpl implements LibraryService {
             Map<String, Library> libMap = libs.stream()
                         .collect(Collectors.toMap(l ->
                                         String.valueOf(l.getLibCode()),
-                                Function.identity(),
-                                (a, b) -> a));
+                                Function.identity(), (a, b) -> a));
 
             List<NearestLibraryDetail> result = new ArrayList<>();
                 for (NearestLibrary n : computed) {
@@ -101,62 +102,9 @@ public class LibraryServiceImpl implements LibraryService {
                 return result;
     }
 
-    @Override
-    public List<NearestLibraryDetail> findTestNearbyLibrary(UserLocation userLocation) {
-
-
-        Map<String, Point> nearby = finder.findNearby(userLocation, 10);
-
-        List<String> libraryCodes = new ArrayList<>(nearby.keySet());
-
-        log.info("반경 내 도서관 {}개 발견.", libraryCodes.size());
-
-
-        // 2) 외부 API 병렬 호출 결과 수집
-        List<AbstractMap.SimpleEntry<String, BookSearchReseponseDto>> apiResults =
-                client.checkBookExistInParallel(userLocation, libraryCodes).join();
-
-        double uLat = userLocation.getLatitude();
-        double uLon = userLocation.getLongitude();
-
-        List<NearestLibrary> computed = new NearestLibrarySelector()
-                .selectTopN(uLat, uLon, nearby, apiResults, 5);
-        List<Integer> libCodes = computed.stream()
-                .map(lib -> Integer.parseInt(lib.getLibCode())) // String → int 파싱
-                .toList();
-
-//            List<Library> libs = repository.findByLibCodeIn(libCodes);
-        log.info("TOP5: {}", computed);
-
-        List<Library> libs = checkRedisLibCodes(libCodes);
-        Map<String, Library> libMap = libs.stream()
-                .collect(Collectors.toMap(l ->
-                                String.valueOf(l.getLibCode()),
-                        Function.identity(),
-                        (a, b) -> a));
-
-        List<NearestLibraryDetail> result = new ArrayList<>();
-        for (NearestLibrary n : computed) {
-            Library lib = libMap.get(n.getLibCode());
-            if (lib != null) {
-                result.add(new NearestLibraryDetail(
-                        n.getLibCode(),
-                        lib.getLibName(),
-                        n.getIsLoan(),
-                        lib.getAddress(),
-                        lib.getTel(),
-                        lib.getLatitude(),
-                        lib.getLongitude(),
-                        n.getDistanceKm()
-                ));
-            }
-        }
-        return result;
-    }
-
-
 
     @Override
+    @CircuitBreaker(name = "bookSearchService", fallbackMethod = "fallbackSearchBook")
     public List<BookDto> searchBook(String sessionId, String title) {
         List<BookDto> searchBook = searchClient.searchBook(title);
         searchHistoryPort.addHistory(sessionId,title);
@@ -171,10 +119,9 @@ public class LibraryServiceImpl implements LibraryService {
     private static List<Library> checkLibCodes(List<Integer> libCodes) {
         Map<Integer, Library> results = LibraryGeoService.cache.getAllPresent(libCodes);
 
-        // 2. Map에서 List를 추출하고, 요청된 순서대로 결과 리스트를 생성
         List<Library> out = new ArrayList<>();
         for (Integer code : libCodes) {
-            // 캐시에 없는 경우 null이 추가되지만, filter로 제거될 것입니다.
+            // 캐시에 없는 경우 null이 추가되지만, filter로 제거.
             out.add(results.get(code));
         }
 
@@ -226,4 +173,14 @@ public class LibraryServiceImpl implements LibraryService {
         return result;
     }
 
+    public List<NearestLibraryDetail> fallbackNearbyLibrary(UserLocation userLocation, Throwable t) {
+        log.error("도서관 조회 서비스 장애 발생! 사유: {}", t.getMessage());
+
+        return List.of(new NearestLibraryDetail("현재 서비스가 지연 중입니다."));
+    }
+
+    public List<BookDto> fallbackSearchBook(String title,String ignoredParam, Throwable t) {
+        log.error("책 검색 API 장애 발생. 검색어: {}, 원인: {}", title, t.getMessage());
+        return List.of(BookDto.createError("검색 서비스가 일시적으로 지연되고 있습니다."));
+    }
 }

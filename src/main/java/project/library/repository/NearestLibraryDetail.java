@@ -20,4 +20,28 @@ public class NearestLibraryDetail {
     private double longitude;    // 경도
     private double distanceKm;   // 사용자와의 거리 (km)
 
+    private String  message;
+    private boolean isError;
+    public NearestLibraryDetail(String libCode, String libName, String isLoan, String address, String tel, double latitude, double longitude, double distanceKm) {
+        this.libCode = libCode;
+        this.libName = libName;
+        this.isLoan = isLoan;
+        this.address = address;
+        this.tel = tel;
+        this.latitude = latitude;
+        this.longitude = longitude;
+        this.distanceKm = distanceKm;
+    }
+
+    public NearestLibraryDetail(String message) {
+        this.message = message;
+    }
+
+    public static NearestLibraryDetail createError(String message) {
+
+        NearestLibraryDetail error = new NearestLibraryDetail(message);
+
+        error.isError=true;
+        return error;
+    }
 }

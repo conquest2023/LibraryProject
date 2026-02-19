@@ -1,6 +1,8 @@
 package project.library.infrastructure.book;
 
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
@@ -13,6 +15,7 @@ import java.net.URI;
 import java.util.List;
 
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class BookSearchClient {
@@ -22,6 +25,7 @@ public class BookSearchClient {
     private static final String API_BASE_URL = "http://data4library.kr/api";
 
     private static final String AUTH_KEY = "1df2f040d9555558e014f541e2908356008ca9e3aa7a1d9c43ec2c15e54f5f4b";
+
     public List<BookDto> searchBook(String title){
 
         URI uri = UriComponentsBuilder
@@ -51,11 +55,11 @@ public class BookSearchClient {
 
 
 
-        // Java Stream을 사용해 더 간결하게 책 목록만 추출
         return docWrappers.stream()
                 .map(BookDetailDto::getDoc)
                 .toList();
     }
+
 
 
 }

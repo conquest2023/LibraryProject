@@ -28,8 +28,7 @@ public class LibraryFinder {
                 redisTemplate.opsForGeo().radius(
                         "libraries:locations",
                         area,
-                        RedisGeoCommands.GeoRadiusCommandArgs.newGeoRadiusArgs().includeCoordinates()
-                );
+                        RedisGeoCommands.GeoRadiusCommandArgs.newGeoRadiusArgs().includeCoordinates());
 
          return results.getContent().stream()
 //                    .filter(r -> r.getContent().getPoint() != null)   // 좌표 없는 건 제외

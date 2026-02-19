@@ -5,7 +5,12 @@
     <div v-if="locationError" class="status-message error">
       {{ locationError }}
     </div>
-
+    <div v-else-if="systemError" class="status-message error">
+      ⚠️ {{ systemError }}
+      <div style="font-size: 0.85rem; margin-top: 0.5rem; opacity: 0.8;">
+        잠시 후 다시 시도해주세요.
+      </div>
+    </div>
     <div v-else-if="libraries.length > 0">
       <ul class="library-list">
         <li v-for="lib in top3" :key="lib.libCode">
@@ -47,8 +52,16 @@ const props = defineProps({
 });
 
 defineEmits(['open-map']);
+const systemError = computed(() => {
+  if (props.libraries.length > 0 && props.libraries[0].isError) {
+    return props.libraries[0].libName;
+  }
+  return null;
+});
 
-// 전달받은 도서관 목록에서 상위 3개만 잘라서 사용
+const hasValidLibraries = computed(() => {
+  return !systemError.value && props.libraries.length > 0;
+});
 const top3 = computed(() => props.libraries.slice(0, 3));
 </script>
 

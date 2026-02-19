@@ -31,14 +31,14 @@ public class DistanceController {
     }
 
 
-    @PostMapping("/location/redis")
-    public ResponseEntity<?> receiveTestLocation(@RequestBody UserLocation locationDto) {
-        long start = System.currentTimeMillis();
-        List<NearestLibraryDetail> nearestLibraries = calculateService.findTestNearbyLibrary(locationDto);
-        long end = System.currentTimeMillis();
-        log.info("resultTime={}",end-start);
-        return ResponseEntity.ok(Map.of("nearest",nearestLibraries));
-    }
+//    @PostMapping("/location/redis")
+//    public ResponseEntity<?> receiveTestLocation(@RequestBody UserLocation locationDto) {
+//        long start = System.currentTimeMillis();
+//        List<NearestLibraryDetail> nearestLibraries = calculateService.findTestNearbyLibrary(locationDto);
+//        long end = System.currentTimeMillis();
+//        log.info("resultTime={}",end-start);
+//        return ResponseEntity.ok(Map.of("nearest",nearestLibraries));
+//    }
 
 
 }
